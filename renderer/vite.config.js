@@ -4,6 +4,7 @@ const path = require('path');
 
 module.exports = defineConfig({
   root: path.resolve(__dirname),
+  base: './',
   plugins: [react()],
   server: {
     host: '127.0.0.1',
