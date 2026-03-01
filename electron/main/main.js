@@ -6,6 +6,7 @@ const { CHANNELS, validateConfigSet } = require('../shared/ipc');
 
 let mainWindow;
 let autoUpdateTimer = null;
+let hasDownloadedUpdate = false;
 
 const DEFAULT_CONFIG = {
   theme: 'system'
@@ -349,6 +350,19 @@ function registerIpc() {
     }
   });
 
+  ipcMain.handle(CHANNELS.APP_INSTALL_UPDATE, () => {
+    if (!app.isPackaged) {
+      return { ok: false, skipped: true, reason: 'not-packaged' };
+    }
+    if (!hasDownloadedUpdate) {
+      return { ok: false, skipped: true, reason: 'update-not-downloaded' };
+    }
+    setImmediate(() => {
+      autoUpdater.quitAndInstall(false, true);
+    });
+    return { ok: true };
+  });
+
   ipcMain.handle(CHANNELS.CONFIG_GET, () => {
     return readConfig();
   });
@@ -376,6 +390,7 @@ function setupAutoUpdater() {
   });
 
   autoUpdater.on('update-available', (info) => {
+    hasDownloadedUpdate = false;
     sendToRenderer(CHANNELS.UPDATE_STATUS, {
       state: 'available',
       message: 'Atualização disponível. Download iniciado.',
@@ -384,6 +399,7 @@ function setupAutoUpdater() {
   });
 
   autoUpdater.on('update-not-available', (info) => {
+    hasDownloadedUpdate = false;
     sendToRenderer(CHANNELS.UPDATE_STATUS, {
       state: 'not-available',
       message: 'Aplicativo já está atualizado.',
@@ -400,9 +416,10 @@ function setupAutoUpdater() {
   });
 
   autoUpdater.on('update-downloaded', (info) => {
+    hasDownloadedUpdate = true;
     sendToRenderer(CHANNELS.UPDATE_STATUS, {
       state: 'downloaded',
-      message: 'Atualização pronta. Reinicie para instalar.',
+      message: 'Atualização pronta. Reinicie o app ou instale agora.',
       info
     });
   });

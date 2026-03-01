@@ -9,6 +9,7 @@ const { CHANNELS } = require('../shared/ipc');
  *   isMaximized: () => Promise<{isMaximized: boolean}>,
  *   getVersion: () => Promise<{version: string}>,
  *   checkForUpdates: () => Promise<{ok: boolean, skipped?: boolean, reason?: string, error?: string, updateInfo?: unknown}>,
+ *   installUpdate: () => Promise<{ok: boolean, skipped?: boolean, reason?: string, error?: string}>,
  *   getConfig: () => Promise<Record<string, unknown>>,
  *   setConfig: (key: string, value: unknown) => Promise<{ok: boolean, error?: string, config?: Record<string, unknown>}>,
  *   onUpdateStatus: (listener: (payload: any) => void) => () => void,
@@ -25,6 +26,7 @@ const desktop = {
   isMaximized: () => ipcRenderer.invoke(CHANNELS.WINDOW_IS_MAXIMIZED),
   getVersion: () => ipcRenderer.invoke(CHANNELS.APP_GET_VERSION),
   checkForUpdates: () => ipcRenderer.invoke(CHANNELS.APP_CHECK_UPDATES),
+  installUpdate: () => ipcRenderer.invoke(CHANNELS.APP_INSTALL_UPDATE),
   getConfig: () => ipcRenderer.invoke(CHANNELS.CONFIG_GET),
   setConfig: (key, value) => ipcRenderer.invoke(CHANNELS.CONFIG_SET, { key, value }),
   onUpdateStatus: (listener) => {

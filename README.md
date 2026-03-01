@@ -21,6 +21,24 @@ npm run build
 npm run pack:win
 ```
 
+## Release Windows (GitHub Releases + Auto-update)
+
+```bash
+npm run release:win
+```
+
+O release publica os assets esperados:
+- `onev2-seell-desktop-SETUP.exe`
+- `latest.yml`
+- `*.blockmap`
+
+Fluxo em produção:
+1. Usuário instala via `onev2-seell-desktop-SETUP.exe`.
+2. Instalação padrão per-user em `%LocalAppData%\\Programs\\oneV2 seeLL`.
+3. App consulta `latest.yml` na release mais recente.
+4. Se houver nova versão, baixa o setup e aplica no reinício (ou via `quitAndInstall`).
+5. Novas releases atualizam clientes existentes automaticamente.
+
 ## Publicar release via tag
 
 1. Ajuste `build.publish.owner` e `build.publish.repo` no `package.json`.

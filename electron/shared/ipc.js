@@ -5,6 +5,7 @@ const CHANNELS = Object.freeze({
   WINDOW_IS_MAXIMIZED: 'window:is-maximized',
   APP_GET_VERSION: 'app:get-version',
   APP_CHECK_UPDATES: 'app:check-updates',
+  APP_INSTALL_UPDATE: 'app:install-update',
   CONFIG_GET: 'config:get',
   CONFIG_SET: 'config:set',
   UPDATE_STATUS: 'update:status',
