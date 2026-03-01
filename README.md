@@ -28,8 +28,8 @@ npm run pack:win
 3. Crie e envie uma tag:
 
 ```bash
-git tag electron-v0.1.0
-git push origin electron-v0.1.0
+git tag onev2-seell-v0.1.0
+git push origin onev2-seell-v0.1.0
 ```
 
 O workflow `release.yml` vai gerar/publicar a release no GitHub Releases.

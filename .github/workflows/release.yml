@@ -3,7 +3,7 @@ name: Release oneV2 seeLL (Windows)
 on:
   push:
     tags:
-      - 'electron-v*'
+      - 'onev2-seell-v*'
 
 jobs:
   release:
