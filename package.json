@@ -14,7 +14,7 @@
     "build:electron": "electron-builder --dir",
     "pack:win": "npm run build:renderer && electron-builder --win nsis --publish never",
     "dist:win": "npm run build:renderer && electron-builder --win nsis --publish always",
-    "release:win": "npm run dist:win"
+    "release:win": "npm run build:renderer && electron-builder --win nsis --publish never"
   },
   "dependencies": {
     "electron-updater": "^6.3.9",

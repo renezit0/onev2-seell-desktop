@@ -27,7 +27,7 @@ npm run pack:win
 npm run release:win
 ```
 
-O release publica os assets esperados:
+O comando gera os assets esperados em `release/`:
 - `onev2-seell-desktop-SETUP.exe`
 - `latest.yml`
 - `*.blockmap`
@@ -37,7 +37,8 @@ Fluxo em produção:
 2. Instalação padrão per-user em `%LocalAppData%\\Programs\\oneV2 seeLL`.
 3. App consulta `latest.yml` na release mais recente.
 4. Se houver nova versão, baixa o setup e aplica no reinício (ou via `quitAndInstall`).
-5. Novas releases atualizam clientes existentes automaticamente.
+5. O workflow faz upload desses arquivos para a release da tag `onev2-seell-v*`.
+6. Novas releases atualizam clientes existentes automaticamente.
 
 ## Publicar release via tag
 
