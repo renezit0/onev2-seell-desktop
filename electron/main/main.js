@@ -52,6 +52,12 @@ function getRendererEntry() {
   if (process.env.VITE_DEV_SERVER_URL) {
     return process.env.VITE_DEV_SERVER_URL;
   }
+  if (process.env.ONEV2_APP_URL) {
+    return process.env.ONEV2_APP_URL;
+  }
+  if (app.isPackaged) {
+    return 'https://onev2.seellbr.com';
+  }
   return path.join(__dirname, '../../renderer/dist/index.html');
 }
 
@@ -305,9 +311,10 @@ function createWindow() {
   });
 
   mainWindow.webContents.on('will-navigate', (event, url) => {
-    const allowedOrigin = process.env.VITE_DEV_SERVER_URL || 'file://';
-    if (allowedOrigin.startsWith('file://')) return;
-    if (!url.startsWith(allowedOrigin)) {
+    const entry = getRendererEntry();
+    if (!entry.startsWith('http')) return;
+    const allowedOrigin = new URL(entry).origin;
+    if (!String(url || '').startsWith(allowedOrigin)) {
       event.preventDefault();
       shell.openExternal(url);
     }
