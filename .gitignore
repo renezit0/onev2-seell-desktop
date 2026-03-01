@@ -1,0 +1,9 @@
+node_modules/
+release/
+renderer/dist/
+.vite/
+*.log
+.DS_Store
+.env
+.env.*
+!.env.example

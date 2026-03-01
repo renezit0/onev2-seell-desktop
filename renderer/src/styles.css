@@ -1,0 +1,97 @@
+:root {
+  color-scheme: light dark;
+  font-family: Inter, system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+}
+
+* { box-sizing: border-box; }
+
+html, body, #root {
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  background: #0b1220;
+}
+
+.app {
+  height: 100%;
+  color: #e5e7eb;
+  background: radial-gradient(circle at 20% 10%, #1e293b, #0b1220 48%);
+}
+
+.titlebar {
+  height: 46px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 10px 0 14px;
+  border-bottom: 1px solid rgba(148, 163, 184, 0.25);
+  background: linear-gradient(180deg, rgba(15, 23, 42, 0.88), rgba(15, 23, 42, 0.68));
+  -webkit-app-region: drag;
+}
+
+.titlebar.is-mac {
+  height: 54px;
+  padding-left: 92px;
+  padding-right: 14px;
+}
+
+.title {
+  font-weight: 600;
+  font-size: 13px;
+}
+
+.window-actions {
+  display: flex;
+  gap: 6px;
+  -webkit-app-region: no-drag;
+}
+
+.window-actions button {
+  border: 1px solid rgba(148, 163, 184, 0.35);
+  background: rgba(15, 23, 42, 0.7);
+  color: #e2e8f0;
+  border-radius: 8px;
+  width: 34px;
+  height: 28px;
+  cursor: pointer;
+}
+
+.window-actions button.danger:hover {
+  background: #dc2626;
+  border-color: #dc2626;
+}
+
+.content {
+  padding: 24px;
+}
+
+.content h1 {
+  margin-top: 0;
+  margin-bottom: 8px;
+}
+
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin: 14px 0;
+}
+
+.actions button {
+  border: 1px solid rgba(96, 165, 250, 0.45);
+  background: rgba(30, 64, 175, 0.25);
+  color: #dbeafe;
+  border-radius: 10px;
+  padding: 10px 14px;
+  cursor: pointer;
+}
+
+pre {
+  margin-top: 18px;
+  padding: 12px;
+  border: 1px solid rgba(148, 163, 184, 0.25);
+  border-radius: 12px;
+  background: rgba(2, 6, 23, 0.55);
+  color: #cbd5e1;
+  white-space: pre-wrap;
+}
