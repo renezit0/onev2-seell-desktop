@@ -1,7 +1,22 @@
 import { useEffect, useState } from 'react';
 
 export default function App() {
-  const isMac = window.desktop.platform === 'darwin';
+  const desktop = window.desktop ?? {
+    platform: 'unknown',
+    minimize: async () => ({ ok: false, reason: 'desktop-unavailable' }),
+    toggleMaximize: async () => ({ ok: false, reason: 'desktop-unavailable' }),
+    close: async () => ({ ok: false, reason: 'desktop-unavailable' }),
+    isMaximized: async () => ({ isMaximized: false }),
+    getVersion: async () => ({ version: 'unknown' }),
+    checkForUpdates: async () => ({ ok: false, reason: 'desktop-unavailable' }),
+    installUpdate: async () => ({ ok: false, reason: 'desktop-unavailable' }),
+    getConfig: async () => ({}),
+    setConfig: async () => ({ ok: false, reason: 'desktop-unavailable' }),
+    onUpdateStatus: () => () => {},
+    onWindowState: () => () => {}
+  };
+  const isDesktopAvailable = !!window.desktop;
+  const isMac = desktop.platform === 'darwin';
   const [version, setVersion] = useState('-');
   const [isMaximized, setIsMaximized] = useState(false);
   const [updateStatus, setUpdateStatus] = useState('Pronto');
@@ -12,21 +27,21 @@ export default function App() {
     let offWindow = () => {};
 
     (async () => {
-      const v = await window.desktop.getVersion();
+      const v = await desktop.getVersion();
       setVersion(v.version);
 
-      const current = await window.desktop.getConfig();
+      const current = await desktop.getConfig();
       if (current?.theme) setTheme(String(current.theme));
 
-      const max = await window.desktop.isMaximized();
+      const max = await desktop.isMaximized();
       setIsMaximized(!!max.isMaximized);
     })();
 
-    offUpdate = window.desktop.onUpdateStatus((payload) => {
+    offUpdate = desktop.onUpdateStatus((payload) => {
       setUpdateStatus(payload?.message || payload?.state || 'Sem status');
     });
 
-    offWindow = window.desktop.onWindowState((payload) => {
+    offWindow = desktop.onWindowState((payload) => {
       setIsMaximized(!!payload?.isMaximized);
     });
 
@@ -39,11 +54,11 @@ export default function App() {
   async function toggleTheme() {
     const next = theme === 'dark' ? 'light' : 'dark';
     setTheme(next);
-    await window.desktop.setConfig('theme', next);
+    await desktop.setConfig('theme', next);
   }
 
   async function manualUpdateCheck() {
-    const result = await window.desktop.checkForUpdates();
+    const result = await desktop.checkForUpdates();
     if (result.skipped) {
       setUpdateStatus('Check manual ignorado em modo dev.');
       return;
@@ -70,6 +85,11 @@ export default function App() {
 
       <main className="content">
         <h1>Projeto base pronto</h1>
+        {!isDesktopAvailable ? (
+          <p style={{ color: '#fca5a5' }}>
+            Falha ao carregar API desktop (preload). Verifique o build do Electron.
+          </p>
+        ) : null}
         <p>Versão app: {version}</p>
         <p>Status update: {updateStatus}</p>
 

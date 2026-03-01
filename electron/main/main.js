@@ -8,6 +8,11 @@ let mainWindow;
 let autoUpdateTimer = null;
 let hasDownloadedUpdate = false;
 
+if (process.platform === 'win32') {
+  app.disableHardwareAcceleration();
+  app.commandLine.appendSwitch('disable-features', 'CalculateNativeWinOcclusion');
+}
+
 const DEFAULT_CONFIG = {
   theme: 'system'
 };
@@ -265,7 +270,7 @@ function createWindow() {
     frame: false,
     titleBarStyle: isMac ? 'hiddenInset' : 'hidden',
     ...(isMac ? { trafficLightPosition: { x: 7, y: 8 } } : {}),
-    backgroundColor: '#0f172a',
+    backgroundColor: '#ffffff',
     webPreferences: {
       preload: path.join(__dirname, '../preload/preload.js'),
       contextIsolation: true,
@@ -279,6 +284,12 @@ function createWindow() {
   mainWindow.once('ready-to-show', () => {
     mainWindow.show();
   });
+
+  setTimeout(() => {
+    if (mainWindow && !mainWindow.isDestroyed() && !mainWindow.isVisible()) {
+      mainWindow.show();
+    }
+  }, 3000);
 
   mainWindow.on('maximize', () => {
     sendToRenderer(CHANNELS.WINDOW_STATE, { isMaximized: true });
@@ -300,6 +311,29 @@ function createWindow() {
       event.preventDefault();
       shell.openExternal(url);
     }
+  });
+
+  mainWindow.webContents.on('did-fail-load', (_event, errorCode, errorDescription, validatedURL) => {
+    const html = `
+      <html><body style="font-family: Arial, sans-serif; padding: 20px;">
+      <h2>Falha ao carregar interface</h2>
+      <p><b>Código:</b> ${String(errorCode)}</p>
+      <p><b>Erro:</b> ${String(errorDescription || 'desconhecido')}</p>
+      <p><b>URL:</b> ${String(validatedURL || '')}</p>
+      </body></html>
+    `;
+    mainWindow.webContents.loadURL(`data:text/html;charset=utf-8,${encodeURIComponent(html)}`).catch(() => {});
+  });
+
+  mainWindow.webContents.on('render-process-gone', (_event, details) => {
+    const html = `
+      <html><body style="font-family: Arial, sans-serif; padding: 20px;">
+      <h2>Render process finalizado</h2>
+      <p><b>Motivo:</b> ${String(details?.reason || 'unknown')}</p>
+      <p><b>Exit code:</b> ${String(details?.exitCode ?? '')}</p>
+      </body></html>
+    `;
+    mainWindow.webContents.loadURL(`data:text/html;charset=utf-8,${encodeURIComponent(html)}`).catch(() => {});
   });
 
   const entry = getRendererEntry();
