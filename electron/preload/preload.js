@@ -1,5 +1,19 @@
 const { contextBridge, ipcRenderer } = require('electron');
-const { CHANNELS } = require('../shared/ipc');
+// Em preload sandboxed no Windows, require de módulos locais pode falhar.
+// Mantemos os canais inline para garantir que window.desktop sempre suba.
+const CHANNELS = Object.freeze({
+  WINDOW_MINIMIZE: 'window:minimize',
+  WINDOW_TOGGLE_MAXIMIZE: 'window:toggle-maximize',
+  WINDOW_CLOSE: 'window:close',
+  WINDOW_IS_MAXIMIZED: 'window:is-maximized',
+  APP_GET_VERSION: 'app:get-version',
+  APP_CHECK_UPDATES: 'app:check-updates',
+  APP_INSTALL_UPDATE: 'app:install-update',
+  CONFIG_GET: 'config:get',
+  CONFIG_SET: 'config:set',
+  UPDATE_STATUS: 'update:status',
+  WINDOW_STATE: 'window:state'
+});
 
 /**
  * @typedef {{
