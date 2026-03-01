@@ -43,6 +43,7 @@
       "renderer/dist/**/*",
       "package.json"
     ],
+    "asar": true,
     "extraMetadata": {
       "main": "electron/main/main.js"
     },
