@@ -192,20 +192,12 @@ async function ensureRendererServer() {
   });
 
   const preferredPort = Number.parseInt(process.env.ONEV2_DESKTOP_PORT || '5174', 10);
-  const candidatePorts = [];
-  if (Number.isFinite(preferredPort) && preferredPort > 0) {
-    for (let i = 0; i <= 20; i += 1) {
-      candidatePorts.push(preferredPort + i);
-    }
-  }
-  candidatePorts.push(0);
+  const targetPort = Number.isFinite(preferredPort) && preferredPort > 0 ? preferredPort : 5174;
 
-  const startServer = (index) => new Promise((resolve, reject) => {
-    const targetPort = candidatePorts[index];
+  const startServer = () => new Promise((resolve, reject) => {
     const onError = (error) => {
-      if (error?.code === 'EADDRINUSE' && index < candidatePorts.length - 1) {
-        rendererServer.removeListener('error', onError);
-        startServer(index + 1).then(resolve).catch(reject);
+      if (error?.code === 'EADDRINUSE') {
+        reject(new Error(`Porta ${targetPort} ocupada. Libere a porta ou defina ONEV2_DESKTOP_PORT.`));
         return;
       }
       reject(error);
@@ -225,7 +217,7 @@ async function ensureRendererServer() {
     });
   });
 
-  await startServer(0);
+  await startServer();
 
   return rendererServerUrl;
 }
