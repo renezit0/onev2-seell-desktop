@@ -214,6 +214,7 @@ function installMacUnifiedTitlebar(windowRef) {
   window.__desktopUnifiedTitlebarInstalled = true;
 
   const STRIP_HEIGHT = 30;
+  const LAYOUT_OFFSET = 22;
   const SIDEBAR_SELECTORS = [
     '[data-app-sidebar]',
     '.app-sidebar',
@@ -334,7 +335,7 @@ function installMacUnifiedTitlebar(windowRef) {
         header.dataset.desktopTitlebarBaseTop = String(topPx);
       }
       const baseTop = Number.parseFloat(header.dataset.desktopTitlebarBaseTop || '0') || 0;
-      header.style.setProperty('top', (baseTop + STRIP_HEIGHT) + 'px', 'important');
+      header.style.setProperty('top', (baseTop + LAYOUT_OFFSET) + 'px', 'important');
     }
 
     if (sidebar) {
@@ -343,8 +344,8 @@ function installMacUnifiedTitlebar(windowRef) {
         sidebar.dataset.desktopTitlebarBaseTop = String(topPx);
       }
       const baseTop = Number.parseFloat(sidebar.dataset.desktopTitlebarBaseTop || '0') || 0;
-      sidebar.style.setProperty('top', (baseTop + STRIP_HEIGHT) + 'px', 'important');
-      sidebar.style.setProperty('height', 'calc(100vh - ' + (baseTop + STRIP_HEIGHT) + 'px)', 'important');
+      sidebar.style.setProperty('top', (baseTop + LAYOUT_OFFSET) + 'px', 'important');
+      sidebar.style.setProperty('height', 'calc(100vh - ' + (baseTop + LAYOUT_OFFSET) + 'px)', 'important');
     }
 
     if (header && header.nextElementSibling instanceof HTMLElement) {
@@ -354,8 +355,8 @@ function installMacUnifiedTitlebar(windowRef) {
         contentEl.dataset.desktopTitlebarBasePaddingTop = String(paddingTop);
       }
       const basePaddingTop = Number.parseFloat(contentEl.dataset.desktopTitlebarBasePaddingTop || '0') || 0;
-      contentEl.style.setProperty('padding-top', (basePaddingTop + STRIP_HEIGHT) + 'px', 'important');
-      contentEl.style.setProperty('min-height', 'calc(100vh - 64px - ' + STRIP_HEIGHT + 'px)', 'important');
+      contentEl.style.setProperty('padding-top', (basePaddingTop + LAYOUT_OFFSET) + 'px', 'important');
+      contentEl.style.setProperty('min-height', 'calc(100vh - 64px - ' + LAYOUT_OFFSET + 'px)', 'important');
     }
   };
 
