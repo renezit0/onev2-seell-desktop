@@ -1019,13 +1019,13 @@ function installElectronUpdateUiBridge(windowRef) {
     badge.id = 'desktop-electron-version';
     badge.textContent = 'v.' + version;
     badge.style.position = 'fixed';
-    badge.style.right = '8px';
-    badge.style.bottom = '4px';
-    badge.style.zIndex = '2147483645';
+    badge.style.right = '96px';
+    badge.style.bottom = '10px';
+    badge.style.zIndex = '2147483647';
     badge.style.pointerEvents = 'none';
-    badge.style.font = '600 9px/1 "Quicksand", "Segoe UI", sans-serif';
-    badge.style.color = 'rgba(100, 116, 139, 0.76)';
-    badge.style.background = 'rgba(255, 255, 255, 0.6)';
+    badge.style.font = '700 10px/1 "Quicksand", "Segoe UI", sans-serif';
+    badge.style.color = 'rgba(71, 85, 105, 0.92)';
+    badge.style.background = 'rgba(255, 255, 255, 0.85)';
     badge.style.padding = '2px 5px';
     badge.style.borderRadius = '999px';
     badge.style.border = '1px solid rgba(148, 163, 184, 0.35)';
@@ -1042,8 +1042,8 @@ function installElectronUpdateUiBridge(windowRef) {
     globalUpdateBtnEl.type = 'button';
     globalUpdateBtnEl.dataset.desktopGlobalUpdateBtn = '1';
     globalUpdateBtnEl.style.position = 'fixed';
-    globalUpdateBtnEl.style.right = '14px';
-    globalUpdateBtnEl.style.bottom = '28px';
+    globalUpdateBtnEl.style.right = '92px';
+    globalUpdateBtnEl.style.bottom = '34px';
     globalUpdateBtnEl.style.zIndex = '2147483646';
     globalUpdateBtnEl.style.display = 'inline-flex';
     globalUpdateBtnEl.style.alignItems = 'center';
@@ -1312,6 +1312,7 @@ function installElectronUpdateUiBridge(windowRef) {
   tick();
   setTimeout(tick, 800);
   setTimeout(tick, 1800);
+  setInterval(tick, 2000);
   ensureToastOffsetStyle();
 })();
 `;
