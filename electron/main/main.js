@@ -524,6 +524,18 @@ function installWindowsCustomTitlebar(windowRef) {
   seamCover.style.background = '#1f232a';
   bar.appendChild(seamCover);
 
+  const scrollFixStyle = document.createElement('style');
+  scrollFixStyle.id = 'desktop-win-scroll-fix';
+  scrollFixStyle.textContent =
+    'html.desktop-win-layout-fix, html.desktop-win-layout-fix body, html.desktop-win-layout-fix #root {' +
+    'height: 100% !important; overflow: hidden !important;' +
+    '}' +
+    'html.desktop-win-layout-fix .pageContent, html.desktop-win-layout-fix [class*="pageContent"], html.desktop-win-layout-fix .content {' +
+    'overflow-y: auto !important; overflow-x: hidden !important; scrollbar-gutter: stable;' +
+    '}' +
+    'html.desktop-win-layout-fix * { overscroll-behavior: contain; }';
+  document.documentElement.appendChild(scrollFixStyle);
+
   const safeCall = async (fn) => {
     try { return await fn(); } catch { return null; }
   };
@@ -569,6 +581,12 @@ function installWindowsCustomTitlebar(windowRef) {
       const baseTop = Number.parseFloat(sidebar.dataset.desktopWinBaseTop || '0') || 0;
       sidebar.style.setProperty('top', (baseTop + BAR_HEIGHT) + 'px', 'important');
       sidebar.style.setProperty('height', \`calc(100vh - \${baseTop + BAR_HEIGHT}px)\`, 'important');
+    }
+
+    if (header && sidebar) {
+      document.documentElement.classList.add('desktop-win-layout-fix');
+    } else {
+      document.documentElement.classList.remove('desktop-win-layout-fix');
     }
 
     if (header && header.nextElementSibling instanceof HTMLElement) {
@@ -656,21 +674,21 @@ function installElectronUpdateUiBridge(windowRef) {
     const bubble = document.createElement('div');
     bubble.style.position = 'fixed';
     bubble.style.right = '16px';
-    bubble.style.bottom = '16px';
+    bubble.style.top = '58px';
     bubble.style.zIndex = '2147483647';
     bubble.style.padding = '10px 12px';
-    bubble.style.borderRadius = '10px';
+    bubble.style.borderRadius = '12px';
     bubble.style.font = '600 12px/1.35 "Segoe UI", sans-serif';
     bubble.style.color = '#fff';
     bubble.style.maxWidth = '340px';
-    bubble.style.boxShadow = '0 10px 24px rgba(0,0,0,0.25)';
+    bubble.style.boxShadow = '0 12px 28px rgba(15, 23, 42, 0.28)';
     bubble.style.background =
       type === 'error' ? '#b91c1c' :
       type === 'success' ? '#047857' :
       type === 'warn' ? '#b45309' : '#1d4ed8';
     bubble.textContent = message;
     document.body.appendChild(bubble);
-    setTimeout(() => bubble.remove(), 3500);
+    setTimeout(() => bubble.remove(), 3200);
   };
 
   const applyUpdateStateVisual = (button, state) => {
@@ -818,6 +836,34 @@ function installElectronUpdateUiBridge(windowRef) {
           : 'Verificar atualizações';
       }
     }
+
+    // Toasts claros no topo para status de atualização.
+    if (!window.__desktopUpdateToastState) {
+      window.__desktopUpdateToastState = { lastState: '', downloadBucket: -1 };
+    }
+    const toastState = window.__desktopUpdateToastState;
+    const state = lastUpdateState;
+
+    if (state === 'downloading') {
+      const percent = Math.max(0, Math.min(100, Number(payload?.progress?.percent || 0)));
+      const bucket = Math.floor(percent / 25);
+      if (bucket !== toastState.downloadBucket) {
+        toastState.downloadBucket = bucket;
+        showBubble(\`Atualização em andamento: \${Math.round(percent)}%\`, 'info');
+      }
+      toastState.lastState = state;
+      return;
+    }
+
+    if (toastState.lastState === state) return;
+    toastState.lastState = state;
+    toastState.downloadBucket = -1;
+
+    if (state === 'checking') showBubble('Verificando atualização do aplicativo...', 'info');
+    if (state === 'available') showBubble('Nova versão encontrada. Download iniciado.', 'warn');
+    if (state === 'not-available') showBubble('Aplicativo já está atualizado.', 'success');
+    if (state === 'downloaded') showBubble('Atualização pronta para instalar. Feche e abra o app.', 'success');
+    if (state === 'error') showBubble(lastUpdateMessage || 'Falha ao atualizar o aplicativo.', 'error');
   });
 
   const mo = new MutationObserver(() => retryPatch());
