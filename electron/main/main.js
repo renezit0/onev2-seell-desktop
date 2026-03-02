@@ -475,8 +475,8 @@ function installWindowsCustomTitlebar(windowRef) {
     btn.type = 'button';
     btn.title = label;
     btn.setAttribute('aria-label', label);
-    btn.style.width = '14px';
-    btn.style.height = '14px';
+    btn.style.width = '16px';
+    btn.style.height = '16px';
     btn.style.borderRadius = '999px';
     btn.style.border = '0';
     btn.style.padding = '0';
@@ -491,10 +491,10 @@ function installWindowsCustomTitlebar(windowRef) {
 
     const icon = document.createElement('span');
     icon.textContent = symbol;
-    icon.style.font = '700 9px/1 "Segoe UI", sans-serif';
+    icon.style.font = '700 11px/1 "Segoe UI", sans-serif';
     icon.style.color = 'rgba(0,0,0,0.62)';
     icon.style.opacity = '0';
-    icon.style.transform = 'translateY(-0.3px)';
+    icon.style.transform = 'translateY(-1px)';
     icon.style.transition = 'opacity 120ms ease';
     btn.appendChild(icon);
 
@@ -548,9 +548,10 @@ function installWindowsCustomTitlebar(windowRef) {
     const sidebarColor = getColor(sidebar, '#1f232a');
     const headerColor = getColor(header, '#f8fafc');
     const sidebarWidth = sidebar ? Math.max(0, Math.round(sidebar.getBoundingClientRect().width)) : 0;
-    const splitX = Math.max(0, sidebarWidth - 1);
+    const splitX = Math.max(0, sidebarWidth + 1);
     bar.style.background = \`linear-gradient(to right, \${sidebarColor} 0px, \${sidebarColor} \${splitX}px, \${headerColor} \${splitX}px, \${headerColor} 100%)\`;
-    seamCover.style.left = splitX + 'px';
+    seamCover.style.left = Math.max(0, splitX - 1) + 'px';
+    seamCover.style.width = '3px';
     seamCover.style.background = sidebarColor;
 
     if (header) {
@@ -728,10 +729,64 @@ function installElectronUpdateUiBridge(windowRef) {
     return target;
   };
 
+  const patchElectronSettingsButton = () => {
+    const hosts = Array.from(document.querySelectorAll('section, article, div, form, [role="dialog"]'));
+    const host = hosts.find((el) => {
+      if (!el || el.dataset.desktopElectronUpdateHost === '1') return false;
+      const txt = normalize(el.textContent);
+      if (!txt || txt.length < 20 || txt.length > 1800) return false;
+      return txt.includes('configuracoes electron') || txt.includes('configuracao electron') || (txt.includes('electron') && txt.includes('configur'));
+    });
+    if (!host) return null;
+
+    host.dataset.desktopElectronUpdateHost = '1';
+
+    const existing = host.querySelector('[data-desktop-electron-update-btn="1"]');
+    if (existing) return existing;
+
+    const wrapper = document.createElement('div');
+    wrapper.style.display = 'flex';
+    wrapper.style.justifyContent = 'flex-end';
+    wrapper.style.marginTop = '10px';
+    wrapper.style.width = '100%';
+
+    const button = document.createElement('button');
+    button.type = 'button';
+    button.dataset.desktopElectronUpdateBtn = '1';
+    button.style.display = 'inline-flex';
+    button.style.alignItems = 'center';
+    button.style.gap = '8px';
+    button.style.padding = '10px 14px';
+    button.style.border = '1px solid rgba(30, 64, 175, 0.22)';
+    button.style.borderRadius = '12px';
+    button.style.background = '#2563eb';
+    button.style.color = '#fff';
+    button.style.font = '700 13px/1 "Segoe UI", sans-serif';
+    button.style.cursor = 'pointer';
+    button.style.boxShadow = '0 8px 18px rgba(37, 99, 235, 0.24)';
+    button.innerHTML = '<span class="desktop-update-dot" style="display:inline-block;width:8px;height:8px;border-radius:999px;background:#bfdbfe"></span><span>Verificar atualizações</span>';
+    button.addEventListener('click', (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+      onUpdateButtonClick();
+    }, true);
+
+    applyUpdateStateVisual(button, lastUpdateState);
+    button.setAttribute('title', lastUpdateMessage || 'Verificar atualizações');
+
+    wrapper.appendChild(button);
+    host.appendChild(wrapper);
+    return button;
+  };
+
   let patchedButton = patchPwaButton();
+  let patchedSettingsButton = patchElectronSettingsButton();
   const retryPatch = () => {
     if (!patchedButton || !document.contains(patchedButton)) {
       patchedButton = patchPwaButton();
+    }
+    if (!patchedSettingsButton || !document.contains(patchedSettingsButton)) {
+      patchedSettingsButton = patchElectronSettingsButton();
     }
   };
 
@@ -747,6 +802,16 @@ function installElectronUpdateUiBridge(windowRef) {
       } else {
         const label = patchedButton.querySelector('span:last-child');
         if (label) label.textContent = 'Atualização';
+      }
+    }
+    if (patchedSettingsButton) {
+      applyUpdateStateVisual(patchedSettingsButton, lastUpdateState);
+      patchedSettingsButton.setAttribute('title', lastUpdateMessage || 'Verificar atualizações');
+      const label = patchedSettingsButton.querySelector('span:last-child');
+      if (label) {
+        label.textContent = lastUpdateState === 'downloaded'
+          ? 'Instalar atualização'
+          : 'Verificar atualizações';
       }
     }
   });
