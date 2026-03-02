@@ -514,29 +514,19 @@ function installWindowsCustomTitlebar(windowRef) {
   bar.appendChild(controls);
   document.documentElement.appendChild(bar);
 
-  const seamCover = document.createElement('div');
-  seamCover.style.position = 'absolute';
-  seamCover.style.top = '0';
-  seamCover.style.height = '100%';
-  seamCover.style.width = '2px';
-  seamCover.style.left = '0px';
-  seamCover.style.pointerEvents = 'none';
-  seamCover.style.background = '#1f232a';
-  bar.appendChild(seamCover);
-
   const scrollFixStyle = document.createElement('style');
   scrollFixStyle.id = 'desktop-win-scroll-fix';
   scrollFixStyle.textContent =
-    'html.desktop-win-layout-fix, html.desktop-win-layout-fix body, html.desktop-win-layout-fix #root {' +
-    'height: 100% !important; overflow-y: hidden !important; overflow-x: hidden !important;' +
+    'html.desktop-win-layout-fix, html.desktop-win-layout-fix body {' +
+    'overflow-x: hidden !important;' +
     '}' +
-    'html.desktop-win-layout-fix .content, html.desktop-win-layout-fix [class*="content"] {' +
-    'height: 100% !important; min-height: 0 !important; overflow-x: hidden !important; max-width: 100vw !important;' +
+    'html.desktop-win-layout-fix #root {' +
+    'min-height: 100% !important; overflow-x: hidden !important;' +
     '}' +
     'html.desktop-win-layout-fix .pageContent, html.desktop-win-layout-fix [class*="pageContent"] {' +
-    'overflow-y: auto !important; overflow-x: hidden !important; scrollbar-gutter: stable; max-width: 100% !important;' +
+    'overflow-y: auto !important; overflow-x: hidden !important; scrollbar-gutter: stable;' +
     '}' +
-    'html.desktop-win-layout-fix [data-app-header], html.desktop-win-layout-fix [data-app-sidebar] { max-width: 100vw !important; }' +
+    'html.desktop-win-layout-fix [data-app-header], html.desktop-win-layout-fix [data-app-sidebar], html.desktop-win-layout-fix [data-app-sidebar] * { max-width: 100vw !important; }' +
     'html.desktop-win-layout-fix * { overscroll-behavior: contain; }';
   document.documentElement.appendChild(scrollFixStyle);
 
@@ -566,9 +556,6 @@ function installWindowsCustomTitlebar(windowRef) {
     const sidebarRect = sidebar ? sidebar.getBoundingClientRect() : null;
     const splitX = sidebarRect ? Math.max(0, Math.round(sidebarRect.right)) : 0;
     bar.style.background = \`linear-gradient(to right, \${sidebarColor} 0px, \${sidebarColor} \${splitX}px, \${headerColor} \${splitX}px, \${headerColor} 100%)\`;
-    seamCover.style.left = Math.max(0, splitX - 1) + 'px';
-    seamCover.style.width = '2px';
-    seamCover.style.background = sidebarColor;
 
     if (header) {
       if (!header.dataset.desktopWinBaseTop) {
@@ -678,14 +665,14 @@ function installElectronUpdateUiBridge(windowRef) {
     const bubble = document.createElement('div');
     bubble.style.position = 'fixed';
     bubble.style.right = '16px';
-    bubble.style.top = '58px';
+    bubble.style.top = '88px';
     bubble.style.zIndex = '2147483647';
-    bubble.style.padding = '10px 12px';
-    bubble.style.borderRadius = '12px';
-    bubble.style.font = '600 12px/1.35 "Segoe UI", sans-serif';
+    bubble.style.padding = '11px 14px';
+    bubble.style.borderRadius = '10px';
+    bubble.style.font = '600 12px/1.4 "Segoe UI", sans-serif';
     bubble.style.color = '#fff';
-    bubble.style.maxWidth = '340px';
-    bubble.style.boxShadow = '0 12px 28px rgba(15, 23, 42, 0.28)';
+    bubble.style.maxWidth = '360px';
+    bubble.style.boxShadow = '0 10px 24px rgba(0,0,0,0.24)';
     bubble.style.background =
       type === 'error' ? '#b91c1c' :
       type === 'success' ? '#047857' :
