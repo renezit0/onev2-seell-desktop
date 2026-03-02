@@ -447,11 +447,71 @@ function installWindowsCustomTitlebar(windowRef) {
   bar.style.right = '0';
   bar.style.height = BAR_HEIGHT + 'px';
   bar.style.zIndex = '2147483647';
-  bar.style.pointerEvents = 'none';
+  bar.style.pointerEvents = 'auto';
   bar.style.userSelect = 'none';
   bar.style.webkitUserSelect = 'none';
   bar.style.border = '0';
   bar.style.boxShadow = 'none';
+  bar.style.display = 'flex';
+  bar.style.alignItems = 'stretch';
+  bar.style.justifyContent = 'space-between';
+  bar.style.gap = '8px';
+
+  const dragArea = document.createElement('div');
+  dragArea.style.flex = '1';
+  dragArea.style.webkitAppRegion = 'drag';
+  dragArea.style.pointerEvents = 'auto';
+
+  const controls = document.createElement('div');
+  controls.style.display = 'flex';
+  controls.style.alignItems = 'center';
+  controls.style.gap = '10px';
+  controls.style.padding = '0 14px 0 8px';
+  controls.style.webkitAppRegion = 'no-drag';
+  controls.style.pointerEvents = 'auto';
+
+  const mkBtn = (type, bg, label, symbol) => {
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.title = label;
+    btn.setAttribute('aria-label', label);
+    btn.style.width = '14px';
+    btn.style.height = '14px';
+    btn.style.borderRadius = '999px';
+    btn.style.border = '0';
+    btn.style.padding = '0';
+    btn.style.margin = '0';
+    btn.style.cursor = 'pointer';
+    btn.style.background = bg;
+    btn.style.position = 'relative';
+    btn.style.display = 'grid';
+    btn.style.placeItems = 'center';
+    btn.style.boxShadow = 'inset 0 0 0 1px rgba(0,0,0,0.18)';
+    btn.dataset.type = type;
+
+    const icon = document.createElement('span');
+    icon.textContent = symbol;
+    icon.style.font = '700 9px/1 "Segoe UI", sans-serif';
+    icon.style.color = 'rgba(0,0,0,0.62)';
+    icon.style.opacity = '0';
+    icon.style.transform = 'translateY(-0.3px)';
+    icon.style.transition = 'opacity 120ms ease';
+    btn.appendChild(icon);
+
+    btn.addEventListener('mouseenter', () => { icon.style.opacity = '1'; });
+    btn.addEventListener('mouseleave', () => { icon.style.opacity = '0'; });
+    return btn;
+  };
+
+  const closeBtn = mkBtn('close', '#ff5f57', 'Fechar', '×');
+  const minBtn = mkBtn('min', '#febc2e', 'Minimizar', '−');
+  const maxBtn = mkBtn('max', '#28c840', 'Maximizar', '+');
+
+  controls.appendChild(minBtn);
+  controls.appendChild(maxBtn);
+  controls.appendChild(closeBtn);
+  bar.appendChild(dragArea);
+  bar.appendChild(controls);
   document.documentElement.appendChild(bar);
 
   const seamCover = document.createElement('div');
@@ -463,6 +523,24 @@ function installWindowsCustomTitlebar(windowRef) {
   seamCover.style.pointerEvents = 'none';
   seamCover.style.background = '#1f232a';
   bar.appendChild(seamCover);
+
+  const safeCall = async (fn) => {
+    try { return await fn(); } catch { return null; }
+  };
+  minBtn.addEventListener('click', () => safeCall(() => window.desktop?.minimize?.()));
+  closeBtn.addEventListener('click', () => safeCall(() => window.desktop?.close?.()));
+  maxBtn.addEventListener('click', () => safeCall(() => window.desktop?.toggleMaximize?.()));
+  dragArea.addEventListener('dblclick', () => safeCall(() => window.desktop?.toggleMaximize?.()));
+
+  const updateMaxVisual = (isMaximized) => {
+    const icon = maxBtn.firstElementChild;
+    if (!icon) return;
+    icon.textContent = isMaximized ? '❐' : '+';
+  };
+  if (window.desktop?.onWindowState) {
+    window.desktop.onWindowState((payload) => updateMaxVisual(!!payload?.isMaximized));
+  }
+  safeCall(() => window.desktop?.isMaximized?.()).then((res) => updateMaxVisual(!!res?.isMaximized));
 
   const syncLayout = () => {
     const header = getFirstVisible(HEADER_SELECTORS, 24);
@@ -511,12 +589,36 @@ function installWindowsCustomTitlebar(windowRef) {
     });
   };
 
+  const ro = new ResizeObserver(refresh);
+  const observeLayoutTargets = () => {
+    const header = getFirstVisible(HEADER_SELECTORS, 24);
+    const sidebar = getFirstVisible(SIDEBAR_SELECTORS, 40);
+    if (header) ro.observe(header);
+    if (sidebar) ro.observe(sidebar);
+  };
+
+  let animTimer = null;
+  const runFastSync = () => {
+    if (animTimer) return;
+    animTimer = setInterval(() => {
+      syncLayout();
+    }, 16);
+  };
+  const stopFastSync = () => {
+    if (!animTimer) return;
+    clearInterval(animTimer);
+    animTimer = null;
+    refresh();
+  };
+
   refresh();
+  observeLayoutTargets();
   window.addEventListener('resize', refresh, { passive: true });
-  document.addEventListener('transitionrun', refresh, true);
-  document.addEventListener('transitionend', refresh, true);
-  document.addEventListener('animationstart', refresh, true);
-  document.addEventListener('animationend', refresh, true);
+  document.addEventListener('transitionrun', runFastSync, true);
+  document.addEventListener('transitionstart', runFastSync, true);
+  document.addEventListener('transitionend', stopFastSync, true);
+  document.addEventListener('animationstart', runFastSync, true);
+  document.addEventListener('animationend', stopFastSync, true);
   const mo = new MutationObserver(refresh);
   mo.observe(document.documentElement, { childList: true, subtree: true, attributes: true, attributeFilter: ['class', 'style'] });
 })();
@@ -675,7 +777,6 @@ function installElectronUpdateUiBridge(windowRef) {
 
 async function createWindow() {
   const isMac = process.platform === 'darwin';
-  const isWin = process.platform === 'win32';
   let rendererEntryForNav = '';
   mainWindow = new BrowserWindow({
     width: 1280,
@@ -686,15 +787,6 @@ async function createWindow() {
     frame: false,
     titleBarStyle: isMac ? 'hiddenInset' : 'hidden',
     ...(isMac ? { trafficLightPosition: { x: 7, y: 8 } } : {}),
-    ...(isWin
-      ? {
-          titleBarOverlay: {
-            color: '#f8fafc',
-            symbolColor: '#334155',
-            height: 44
-          }
-        }
-      : {}),
     backgroundColor: '#ffffff',
     webPreferences: {
       preload: path.join(__dirname, '../preload/preload.js'),
