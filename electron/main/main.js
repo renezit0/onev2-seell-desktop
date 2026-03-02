@@ -8,6 +8,7 @@ const { CHANNELS, validateConfigSet } = require('../shared/ipc');
 let mainWindow;
 let autoUpdateTimer = null;
 let hasDownloadedUpdate = false;
+const RELEASES_LATEST_DOWNLOAD_URL = 'https://github.com/renezit0/onev2-seell-desktop/releases/latest/download';
 
 protocol.registerSchemesAsPrivileged([
   {
@@ -466,7 +467,7 @@ function installWindowsCustomTitlebar(windowRef) {
   controls.style.display = 'flex';
   controls.style.alignItems = 'flex-start';
   controls.style.gap = '10px';
-  controls.style.padding = '6px 14px 0 8px';
+  controls.style.padding = '11px 14px 0 8px';
   controls.style.webkitAppRegion = 'no-drag';
   controls.style.pointerEvents = 'auto';
 
@@ -527,7 +528,7 @@ function installWindowsCustomTitlebar(windowRef) {
     'display: flex !important; flex-direction: column !important; height: 100dvh !important; min-height: 0 !important; overflow: hidden !important;' +
     '}' +
     'html.desktop-win-layout-fix .pageContent, html.desktop-win-layout-fix [class*="pageContent"] {' +
-    'flex: 1 1 auto !important; min-height: 0 !important; overflow-y: auto !important; overflow-x: hidden !important;' +
+    'flex: 1 1 auto !important; min-height: 0 !important; overflow-y: auto !important; overflow-y: overlay !important; overflow-x: hidden !important;' +
     '}' +
     'html.desktop-win-layout-fix [data-app-header], html.desktop-win-layout-fix [data-app-sidebar], html.desktop-win-layout-fix [data-app-sidebar] * { max-width: 100vw !important; }' +
     'html.desktop-win-layout-fix * { overscroll-behavior: contain; }' +
@@ -1060,6 +1061,15 @@ function registerIpc() {
 }
 
 function setupAutoUpdater() {
+  try {
+    autoUpdater.setFeedURL({
+      provider: 'generic',
+      url: RELEASES_LATEST_DOWNLOAD_URL
+    });
+  } catch {
+    // fallback para provider github do electron-builder
+  }
+
   autoUpdater.autoDownload = true;
   autoUpdater.autoInstallOnAppQuit = true;
 
