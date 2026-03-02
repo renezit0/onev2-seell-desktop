@@ -480,6 +480,148 @@ function installWindowsCustomTitlebar(windowRef) {
   windowRef.webContents.on('did-finish-load', inject);
 }
 
+function installElectronUpdateUiBridge(windowRef) {
+  const script = `
+(() => {
+  if (window.__desktopUpdateUiBridgeInstalled) return;
+  window.__desktopUpdateUiBridgeInstalled = true;
+  if (!window.desktop) return;
+
+  let lastUpdateState = 'idle';
+  let lastUpdateMessage = 'Pronto';
+
+  const normalize = (value) =>
+    String(value || '')
+      .toLowerCase()
+      .normalize('NFD')
+      .replace(/[\\u0300-\\u036f]/g, '')
+      .replace(/\\s+/g, ' ')
+      .trim();
+
+  const showBubble = (message, type = 'info') => {
+    const bubble = document.createElement('div');
+    bubble.style.position = 'fixed';
+    bubble.style.right = '16px';
+    bubble.style.bottom = '16px';
+    bubble.style.zIndex = '2147483647';
+    bubble.style.padding = '10px 12px';
+    bubble.style.borderRadius = '10px';
+    bubble.style.font = '600 12px/1.35 "Segoe UI", sans-serif';
+    bubble.style.color = '#fff';
+    bubble.style.maxWidth = '340px';
+    bubble.style.boxShadow = '0 10px 24px rgba(0,0,0,0.25)';
+    bubble.style.background =
+      type === 'error' ? '#b91c1c' :
+      type === 'success' ? '#047857' :
+      type === 'warn' ? '#b45309' : '#1d4ed8';
+    bubble.textContent = message;
+    document.body.appendChild(bubble);
+    setTimeout(() => bubble.remove(), 3500);
+  };
+
+  const applyUpdateStateVisual = (button, state) => {
+    if (!button) return;
+    const dot = button.querySelector('.desktop-update-dot');
+    if (!dot) return;
+    let color = '#60a5fa';
+    if (state === 'available' || state === 'checking') color = '#f59e0b';
+    if (state === 'downloaded') color = '#10b981';
+    if (state === 'error') color = '#ef4444';
+    if (state === 'not-available') color = '#94a3b8';
+    dot.style.background = color;
+  };
+
+  const onUpdateButtonClick = async () => {
+    if (lastUpdateState === 'downloaded') {
+      const res = await window.desktop.installUpdate();
+      if (res?.ok) {
+        showBubble('Instalando atualização e reiniciando...', 'success');
+      } else {
+        showBubble('Não foi possível instalar agora.', 'error');
+      }
+      return;
+    }
+
+    showBubble('Verificando atualização...', 'info');
+    const result = await window.desktop.checkForUpdates();
+    if (result?.skipped) {
+      showBubble('Atualização disponível apenas no app instalado.', 'warn');
+      return;
+    }
+    if (!result?.ok) {
+      showBubble('Falha ao verificar atualização.', 'error');
+    }
+  };
+
+  const patchPwaButton = () => {
+    const candidates = Array.from(document.querySelectorAll('button, [role="button"], a'));
+    const target = candidates.find((el) => {
+      if (el.dataset.desktopUpdatePatched === '1') return false;
+      const txt = normalize(el.textContent);
+      return txt.includes('pwa') || txt.includes('instalar app') || txt.includes('criar pwa');
+    });
+    if (!target) return null;
+
+    target.dataset.desktopUpdatePatched = '1';
+    target.setAttribute('title', 'Atualizações do desktop');
+    target.setAttribute('aria-label', 'Atualizações do desktop');
+    target.innerHTML = '<span class="desktop-update-dot" style="display:inline-block;width:8px;height:8px;border-radius:999px;background:#60a5fa;margin-right:8px;vertical-align:middle;"></span><span>Atualização</span>';
+    target.addEventListener('click', (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+      onUpdateButtonClick();
+    }, true);
+    applyUpdateStateVisual(target, lastUpdateState);
+    return target;
+  };
+
+  let patchedButton = patchPwaButton();
+  const retryPatch = () => {
+    if (!patchedButton || !document.contains(patchedButton)) {
+      patchedButton = patchPwaButton();
+    }
+  };
+
+  const unlisten = window.desktop.onUpdateStatus((payload) => {
+    lastUpdateState = String(payload?.state || 'idle');
+    lastUpdateMessage = String(payload?.message || '');
+    if (patchedButton) {
+      applyUpdateStateVisual(patchedButton, lastUpdateState);
+      patchedButton.setAttribute('title', lastUpdateMessage || 'Atualizações do desktop');
+      if (lastUpdateState === 'downloaded') {
+        const label = patchedButton.querySelector('span:last-child');
+        if (label) label.textContent = 'Instalar Agora';
+      } else {
+        const label = patchedButton.querySelector('span:last-child');
+        if (label) label.textContent = 'Atualização';
+      }
+    }
+  });
+
+  const mo = new MutationObserver(() => retryPatch());
+  mo.observe(document.documentElement, {
+    childList: true,
+    subtree: true
+  });
+
+  window.addEventListener('beforeunload', () => {
+    try { unlisten?.(); } catch {}
+    mo.disconnect();
+  });
+
+  retryPatch();
+})();
+`;
+
+  const inject = () => {
+    if (windowRef.isDestroyed()) return;
+    windowRef.webContents.executeJavaScript(script).catch(() => {});
+  };
+
+  windowRef.webContents.on('dom-ready', inject);
+  windowRef.webContents.on('did-finish-load', inject);
+}
+
 function createWindow() {
   const isMac = process.platform === 'darwin';
   mainWindow = new BrowserWindow({
@@ -567,6 +709,7 @@ function createWindow() {
 
   installMacUnifiedTitlebar(mainWindow);
   installWindowsCustomTitlebar(mainWindow);
+  installElectronUpdateUiBridge(mainWindow);
 }
 
 function registerIpc() {
