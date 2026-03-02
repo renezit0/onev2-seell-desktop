@@ -757,6 +757,7 @@ function installElectronUpdateUiBridge(windowRef) {
   let downloadToastEl = null;
   let installNowToastEl = null;
   let statusToastEl = null;
+  let statusToastCloseTimer = null;
 
   const normalize = (value) =>
     String(value || '')
@@ -825,12 +826,16 @@ function installElectronUpdateUiBridge(windowRef) {
   };
 
   const closeStatusToast = () => {
+    if (statusToastCloseTimer) {
+      clearTimeout(statusToastCloseTimer);
+      statusToastCloseTimer = null;
+    }
     if (!statusToastEl) return;
     statusToastEl.remove();
     statusToastEl = null;
   };
 
-  const upsertStatusToast = (message, type = 'info') => {
+  const upsertStatusToast = (message, type = 'info', autoCloseMs = 0) => {
     const toastType = type === 'warn' ? 'warning' : (type || 'info');
     const toastTitle =
       toastType === 'success' ? 'Sucesso!' :
@@ -869,6 +874,16 @@ function installElectronUpdateUiBridge(windowRef) {
 
     const messageEl = statusToastEl.querySelector('.toast-message');
     if (messageEl) messageEl.textContent = String(message || '');
+
+    if (statusToastCloseTimer) {
+      clearTimeout(statusToastCloseTimer);
+      statusToastCloseTimer = null;
+    }
+    if (autoCloseMs > 0) {
+      statusToastCloseTimer = setTimeout(() => {
+        closeStatusToast();
+      }, autoCloseMs);
+    }
   };
 
   const closeDownloadToast = () => {
@@ -1135,25 +1150,26 @@ function installElectronUpdateUiBridge(windowRef) {
 
     if (state === 'downloading') {
       const percent = Math.max(0, Math.min(100, Number(payload?.progress?.percent || 0)));
+      closeStatusToast();
       upsertDownloadToast(percent);
       toastState.lastState = state;
       return;
     }
 
     closeDownloadToast();
-    if (state !== 'checking' && state !== 'available' && state !== 'not-available' && state !== 'error') {
-      closeStatusToast();
-    }
     if (state !== 'downloaded') closeInstallNowToast();
 
     if (toastState.lastState === state) return;
     toastState.lastState = state;
 
     if (state === 'checking') upsertStatusToast('Verificando atualização do aplicativo...', 'info');
-    if (state === 'available') upsertStatusToast('Nova versão encontrada. Download iniciado.', 'warn');
-    if (state === 'not-available') upsertStatusToast('Aplicativo já está atualizado.', 'success');
-    if (state === 'downloaded') showInstallNowToast();
-    if (state === 'error') upsertStatusToast(lastUpdateMessage || 'Falha ao atualizar o aplicativo.', 'error');
+    if (state === 'available') upsertStatusToast('Nova versão encontrada. Download iniciado.', 'warn', 2600);
+    if (state === 'not-available') upsertStatusToast('Aplicativo já está atualizado.', 'success', 3200);
+    if (state === 'downloaded') {
+      closeStatusToast();
+      showInstallNowToast();
+    }
+    if (state === 'error') upsertStatusToast(lastUpdateMessage || 'Falha ao atualizar o aplicativo.', 'error', 4200);
   });
 
   const mo = new MutationObserver(() => retryPatch());
