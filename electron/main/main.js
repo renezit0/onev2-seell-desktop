@@ -755,6 +755,7 @@ function installElectronUpdateUiBridge(windowRef) {
   let lastUpdateState = 'idle';
   let lastUpdateMessage = 'Pronto';
   let downloadToastEl = null;
+  let installNowToastEl = null;
 
   const normalize = (value) =>
     String(value || '')
@@ -826,6 +827,56 @@ function installElectronUpdateUiBridge(windowRef) {
     if (!downloadToastEl) return;
     downloadToastEl.remove();
     downloadToastEl = null;
+  };
+
+  const closeInstallNowToast = () => {
+    if (!installNowToastEl) return;
+    installNowToastEl.remove();
+    installNowToastEl = null;
+  };
+
+  const showInstallNowToast = () => {
+    const container = document.getElementById('toastContainer');
+    if (!container) return;
+    if (installNowToastEl && document.contains(installNowToastEl)) return;
+
+    installNowToastEl = document.createElement('div');
+    installNowToastEl.className = 'toast success';
+    installNowToastEl.setAttribute('role', 'alert');
+    installNowToastEl.setAttribute('aria-live', 'polite');
+    installNowToastEl.innerHTML =
+      '<div class="toast-icon"><i class="fas fa-check-circle"></i></div>' +
+      '<div class="toast-content">' +
+      '<div class="toast-title">Atualização pronta</div>' +
+      '<div class="toast-message">Uma nova versão foi baixada.</div>' +
+      '<div style="margin-top:8px;display:flex;gap:8px;">' +
+      '<button type="button" class="desktop-install-now-btn" style="height:28px;padding:0 10px;border-radius:8px;border:1px solid rgba(16,185,129,.45);background:#10b981;color:#fff;font:700 12px/1 \'Segoe UI\',sans-serif;cursor:pointer;">Instalar agora</button>' +
+      '</div>' +
+      '</div>' +
+      '<button type="button" class="toast-close" aria-label="Fechar"><i class="fas fa-times"></i></button>';
+
+    const closeBtn = installNowToastEl.querySelector('.toast-close');
+    closeBtn?.addEventListener('click', closeInstallNowToast);
+
+    const installBtn = installNowToastEl.querySelector('.desktop-install-now-btn');
+    installBtn?.addEventListener('click', async () => {
+      if (!(installBtn instanceof HTMLButtonElement)) return;
+      installBtn.disabled = true;
+      installBtn.style.opacity = '0.75';
+      installBtn.textContent = 'Instalando...';
+      const res = await window.desktop.installUpdate();
+      if (res?.ok) {
+        showBubble('Instalando atualização e reiniciando...', 'success');
+        closeInstallNowToast();
+      } else {
+        installBtn.disabled = false;
+        installBtn.style.opacity = '1';
+        installBtn.textContent = 'Instalar agora';
+        showBubble('Não foi possível instalar agora.', 'error');
+      }
+    });
+
+    container.appendChild(installNowToastEl);
   };
 
   const upsertDownloadToast = (percent) => {
@@ -1042,6 +1093,7 @@ function installElectronUpdateUiBridge(windowRef) {
     }
 
     closeDownloadToast();
+    if (state !== 'downloaded') closeInstallNowToast();
 
     if (toastState.lastState === state) return;
     toastState.lastState = state;
@@ -1049,7 +1101,7 @@ function installElectronUpdateUiBridge(windowRef) {
     if (state === 'checking') showBubble('Verificando atualização do aplicativo...', 'info');
     if (state === 'available') showBubble('Nova versão encontrada. Download iniciado.', 'warn');
     if (state === 'not-available') showBubble('Aplicativo já está atualizado.', 'success');
-    if (state === 'downloaded') showBubble('Atualização pronta. Clique para instalar e reiniciar.', 'success');
+    if (state === 'downloaded') showInstallNowToast();
     if (state === 'error') showBubble(lastUpdateMessage || 'Falha ao atualizar o aplicativo.', 'error');
   });
 
