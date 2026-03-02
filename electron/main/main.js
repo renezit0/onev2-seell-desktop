@@ -528,11 +528,15 @@ function installWindowsCustomTitlebar(windowRef) {
   scrollFixStyle.id = 'desktop-win-scroll-fix';
   scrollFixStyle.textContent =
     'html.desktop-win-layout-fix, html.desktop-win-layout-fix body, html.desktop-win-layout-fix #root {' +
-    'height: 100% !important; overflow: hidden !important;' +
+    'height: 100% !important; overflow-y: hidden !important; overflow-x: hidden !important;' +
     '}' +
-    'html.desktop-win-layout-fix .pageContent, html.desktop-win-layout-fix [class*="pageContent"], html.desktop-win-layout-fix .content {' +
-    'overflow-y: auto !important; overflow-x: hidden !important; scrollbar-gutter: stable;' +
+    'html.desktop-win-layout-fix .content, html.desktop-win-layout-fix [class*="content"] {' +
+    'height: 100% !important; min-height: 0 !important; overflow-x: hidden !important; max-width: 100vw !important;' +
     '}' +
+    'html.desktop-win-layout-fix .pageContent, html.desktop-win-layout-fix [class*="pageContent"] {' +
+    'overflow-y: auto !important; overflow-x: hidden !important; scrollbar-gutter: stable; max-width: 100% !important;' +
+    '}' +
+    'html.desktop-win-layout-fix [data-app-header], html.desktop-win-layout-fix [data-app-sidebar] { max-width: 100vw !important; }' +
     'html.desktop-win-layout-fix * { overscroll-behavior: contain; }';
   document.documentElement.appendChild(scrollFixStyle);
 
@@ -559,8 +563,8 @@ function installWindowsCustomTitlebar(windowRef) {
     const sidebar = getFirstVisible(SIDEBAR_SELECTORS, 40);
     const sidebarColor = getColor(sidebar, '#1f232a');
     const headerColor = getColor(header, '#f8fafc');
-    const sidebarWidth = sidebar ? Math.max(0, Math.round(sidebar.getBoundingClientRect().width)) : 0;
-    const splitX = Math.max(0, sidebarWidth);
+    const sidebarRect = sidebar ? sidebar.getBoundingClientRect() : null;
+    const splitX = sidebarRect ? Math.max(0, Math.round(sidebarRect.right)) : 0;
     bar.style.background = \`linear-gradient(to right, \${sidebarColor} 0px, \${sidebarColor} \${splitX}px, \${headerColor} \${splitX}px, \${headerColor} 100%)\`;
     seamCover.style.left = Math.max(0, splitX - 1) + 'px';
     seamCover.style.width = '2px';
