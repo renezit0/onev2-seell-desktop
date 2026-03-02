@@ -408,7 +408,7 @@ function installWindowsCustomTitlebar(windowRef) {
 
   const BAR_HEIGHT = 44;
   const HEADER_LAYOUT_OFFSET = 36;
-  const SIDEBAR_LAYOUT_OFFSET = 18;
+  const SIDEBAR_LAYOUT_OFFSET = 24;
   const CONTENT_LAYOUT_OFFSET = 36;
   const SIDEBAR_SELECTORS = ['[data-app-sidebar]', '.app-sidebar', '.sidebar', 'aside[class*="sidebar"]', 'nav[class*="sidebar"]'];
   const HEADER_SELECTORS = ['[data-app-header]', '.app-header', '.header', '.topbar', 'header[class*="header"]', 'header'];
@@ -668,6 +668,7 @@ function installWindowsCustomTitlebar(windowRef) {
       const baseTop = Number.parseFloat(sidebar.dataset.desktopWinBaseTop || '0') || 0;
       sidebar.style.setProperty('top', (baseTop + SIDEBAR_LAYOUT_OFFSET) + 'px', 'important');
       sidebar.style.setProperty('height', \`calc(100vh - \${baseTop + SIDEBAR_LAYOUT_OFFSET}px)\`, 'important');
+      sidebar.style.setProperty('overflow', 'visible', 'important');
     }
 
     if (header && sidebar) {
