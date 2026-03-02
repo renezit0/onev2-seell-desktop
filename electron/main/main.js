@@ -534,26 +534,75 @@ function installWindowsCustomTitlebar(windowRef) {
     'overflow-x: hidden !important;' +
     '}' +
     'html.desktop-win-layout-fix * { overscroll-behavior: contain; }' +
-    'html.desktop-win-layout-fix ::-webkit-scrollbar {' +
-    'width: 10px; height: 10px;' +
+    'html.desktop-win-layout-fix .desktop-win-scroll-target {' +
+    'scrollbar-width: none;' +
+    'scrollbar-color: rgba(71, 85, 105, 0.58) transparent;' +
     '}' +
-    'html.desktop-win-layout-fix ::-webkit-scrollbar-track {' +
+    'html.desktop-win-layout-fix .desktop-win-scroll-target::-webkit-scrollbar {' +
+    'width: 0; height: 0;' +
+    '}' +
+    'html.desktop-win-layout-fix .desktop-win-scroll-target:hover::-webkit-scrollbar, html.desktop-win-layout-fix.desktop-win-scroll-active .desktop-win-scroll-target::-webkit-scrollbar {' +
+    'width: 8px; height: 8px;' +
+    '}' +
+    'html.desktop-win-layout-fix .desktop-win-scroll-target::-webkit-scrollbar-track {' +
     'background: transparent; margin: 2px;' +
     '}' +
-    'html.desktop-win-layout-fix ::-webkit-scrollbar-thumb {' +
-    'background: rgba(71, 85, 105, 0.52); border-radius: 999px; border: 2px solid transparent; background-clip: padding-box; min-height: 36px;' +
+    'html.desktop-win-layout-fix .desktop-win-scroll-target::-webkit-scrollbar-thumb {' +
+    'background: rgba(71, 85, 105, 0.5); border-radius: 999px; border: 2px solid transparent; background-clip: padding-box; min-height: 30px;' +
     '}' +
-    'html.desktop-win-layout-fix ::-webkit-scrollbar-thumb:hover {' +
-    'background: rgba(51, 65, 85, 0.76); border: 2px solid transparent; background-clip: padding-box;' +
+    'html.desktop-win-layout-fix .desktop-win-scroll-target::-webkit-scrollbar-thumb:hover {' +
+    'background: rgba(51, 65, 85, 0.72); border: 2px solid transparent; background-clip: padding-box;' +
     '}' +
-    'html.desktop-win-layout-fix ::-webkit-scrollbar-corner {' +
+    'html.desktop-win-layout-fix .desktop-win-scroll-target::-webkit-scrollbar-corner {' +
     'background: transparent;' +
     '}' +
-    'html.desktop-win-layout-fix {' +
+    'html.desktop-win-layout-fix .desktop-win-scroll-target:hover, html.desktop-win-layout-fix.desktop-win-scroll-active .desktop-win-scroll-target {' +
     'scrollbar-width: thin;' +
-    'scrollbar-color: rgba(71, 85, 105, 0.58) transparent;' +
     '}';
   document.documentElement.appendChild(scrollFixStyle);
+
+  let currentScrollHost = null;
+  let clearScrollActiveTimer = null;
+  const markScrollActive = () => {
+    document.documentElement.classList.add('desktop-win-scroll-active');
+    if (clearScrollActiveTimer) clearTimeout(clearScrollActiveTimer);
+    clearScrollActiveTimer = setTimeout(() => {
+      document.documentElement.classList.remove('desktop-win-scroll-active');
+    }, 820);
+  };
+
+  const bindScrollHost = (host) => {
+    if (!(host instanceof HTMLElement)) return;
+    if (currentScrollHost === host) return;
+    if (currentScrollHost) {
+      currentScrollHost.classList.remove('desktop-win-scroll-target');
+      currentScrollHost.removeEventListener('scroll', markScrollActive, { passive: true });
+      currentScrollHost.removeEventListener('wheel', markScrollActive, { passive: true });
+      currentScrollHost.removeEventListener('mouseenter', markScrollActive);
+      currentScrollHost.removeEventListener('touchmove', markScrollActive, { passive: true });
+    }
+    currentScrollHost = host;
+    currentScrollHost.classList.add('desktop-win-scroll-target');
+    currentScrollHost.addEventListener('scroll', markScrollActive, { passive: true });
+    currentScrollHost.addEventListener('wheel', markScrollActive, { passive: true });
+    currentScrollHost.addEventListener('mouseenter', markScrollActive);
+    currentScrollHost.addEventListener('touchmove', markScrollActive, { passive: true });
+  };
+
+  const pickScrollHost = (header) => {
+    if (header && header.nextElementSibling instanceof HTMLElement) {
+      const content = header.nextElementSibling;
+      const deepCandidates = Array.from(content.querySelectorAll('.pageContent, [class*="pageContent"], main, [role="main"]'));
+      const candidates = [content, ...deepCandidates];
+      for (const el of candidates) {
+        if (!(el instanceof HTMLElement)) continue;
+        const canScroll = (el.scrollHeight - el.clientHeight) > 20;
+        if (canScroll) return el;
+      }
+      return content;
+    }
+    return null;
+  };
 
   const safeCall = async (fn) => {
     try { return await fn(); } catch { return null; }
@@ -615,6 +664,9 @@ function installWindowsCustomTitlebar(windowRef) {
       const basePad = Number.parseFloat(content.dataset.desktopWinBasePaddingTop || '0') || 0;
       content.style.setProperty('padding-top', (basePad + BAR_HEIGHT) + 'px', 'important');
     }
+
+    const scrollHost = pickScrollHost(header);
+    bindScrollHost(scrollHost);
   };
 
   let raf = null;
