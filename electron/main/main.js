@@ -407,6 +407,9 @@ function installWindowsCustomTitlebar(windowRef) {
   window.__desktopWindowsTitlebarInstalled = true;
 
   const BAR_HEIGHT = 44;
+  const HEADER_LAYOUT_OFFSET = 40;
+  const SIDEBAR_LAYOUT_OFFSET = 28;
+  const CONTENT_LAYOUT_OFFSET = 40;
   const SIDEBAR_SELECTORS = ['[data-app-sidebar]', '.app-sidebar', '.sidebar', 'aside[class*="sidebar"]', 'nav[class*="sidebar"]'];
   const HEADER_SELECTORS = ['[data-app-header]', '.app-header', '.header', '.topbar', 'header[class*="header"]', 'header'];
 
@@ -655,7 +658,7 @@ function installWindowsCustomTitlebar(windowRef) {
         header.dataset.desktopWinBaseTop = String(Number.parseFloat(window.getComputedStyle(header).top || '0') || 0);
       }
       const baseTop = Number.parseFloat(header.dataset.desktopWinBaseTop || '0') || 0;
-      header.style.setProperty('top', (baseTop + BAR_HEIGHT) + 'px', 'important');
+      header.style.setProperty('top', (baseTop + HEADER_LAYOUT_OFFSET) + 'px', 'important');
     }
 
     if (sidebar) {
@@ -663,8 +666,8 @@ function installWindowsCustomTitlebar(windowRef) {
         sidebar.dataset.desktopWinBaseTop = String(Number.parseFloat(window.getComputedStyle(sidebar).top || '0') || 0);
       }
       const baseTop = Number.parseFloat(sidebar.dataset.desktopWinBaseTop || '0') || 0;
-      sidebar.style.setProperty('top', (baseTop + BAR_HEIGHT) + 'px', 'important');
-      sidebar.style.setProperty('height', \`calc(100vh - \${baseTop + BAR_HEIGHT}px)\`, 'important');
+      sidebar.style.setProperty('top', (baseTop + SIDEBAR_LAYOUT_OFFSET) + 'px', 'important');
+      sidebar.style.setProperty('height', \`calc(100vh - \${baseTop + SIDEBAR_LAYOUT_OFFSET}px)\`, 'important');
     }
 
     if (header && sidebar) {
@@ -681,7 +684,7 @@ function installWindowsCustomTitlebar(windowRef) {
         content.dataset.desktopWinBasePaddingTop = String(Number.parseFloat(window.getComputedStyle(content).paddingTop || '0') || 0);
       }
       const basePad = Number.parseFloat(content.dataset.desktopWinBasePaddingTop || '0') || 0;
-      content.style.setProperty('padding-top', (basePad + BAR_HEIGHT) + 'px', 'important');
+      content.style.setProperty('padding-top', (basePad + CONTENT_LAYOUT_OFFSET) + 'px', 'important');
     }
 
     const scrollHost = pickScrollHost(header);
