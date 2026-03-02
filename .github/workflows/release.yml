@@ -18,6 +18,7 @@ jobs:
         with:
           repository: renezit0/onev2react
           path: onev2react-src
+          token: ${{ secrets.GH_TOKEN }}
 
       - name: Setup Node
         uses: actions/setup-node@v4
