@@ -757,6 +757,7 @@ function installElectronUpdateUiBridge(windowRef) {
   let installNowToastEl = null;
   let statusToastEl = null;
   let statusToastCloseTimer = null;
+  let globalUpdateBtnEl = null;
 
   const normalize = (value) =>
     String(value || '')
@@ -1030,6 +1031,42 @@ function installElectronUpdateUiBridge(windowRef) {
     document.body.appendChild(badge);
   };
 
+  const ensureGlobalUpdateButton = () => {
+    if (!window.desktop) return null;
+    if (globalUpdateBtnEl && document.contains(globalUpdateBtnEl)) {
+      applyUpdateStateVisual(globalUpdateBtnEl, lastUpdateState);
+      return globalUpdateBtnEl;
+    }
+    globalUpdateBtnEl = document.createElement('button');
+    globalUpdateBtnEl.type = 'button';
+    globalUpdateBtnEl.dataset.desktopGlobalUpdateBtn = '1';
+    globalUpdateBtnEl.style.position = 'fixed';
+    globalUpdateBtnEl.style.right = '14px';
+    globalUpdateBtnEl.style.bottom = '28px';
+    globalUpdateBtnEl.style.zIndex = '2147483646';
+    globalUpdateBtnEl.style.display = 'inline-flex';
+    globalUpdateBtnEl.style.alignItems = 'center';
+    globalUpdateBtnEl.style.gap = '8px';
+    globalUpdateBtnEl.style.padding = '9px 12px';
+    globalUpdateBtnEl.style.border = '1px solid rgba(30, 64, 175, 0.22)';
+    globalUpdateBtnEl.style.borderRadius = '12px';
+    globalUpdateBtnEl.style.background = '#2563eb';
+    globalUpdateBtnEl.style.color = '#fff';
+    globalUpdateBtnEl.style.font = '700 12px/1 "Segoe UI", sans-serif';
+    globalUpdateBtnEl.style.cursor = 'pointer';
+    globalUpdateBtnEl.style.boxShadow = '0 8px 18px rgba(37, 99, 235, 0.24)';
+    globalUpdateBtnEl.innerHTML = '<span class="desktop-update-dot" style="display:inline-block;width:8px;height:8px;border-radius:999px;background:#bfdbfe"></span><span>Atualizações</span>';
+    globalUpdateBtnEl.addEventListener('click', (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+      onUpdateButtonClick();
+    }, true);
+    globalUpdateBtnEl.setAttribute('title', lastUpdateMessage || 'Verificar atualizações');
+    document.body.appendChild(globalUpdateBtnEl);
+    applyUpdateStateVisual(globalUpdateBtnEl, lastUpdateState);
+    return globalUpdateBtnEl;
+  };
+
   const patchPwaButton = () => {
     const candidates = Array.from(document.querySelectorAll('button, [role="button"], a'));
     const target = candidates.find((el) => {
@@ -1176,6 +1213,17 @@ function installElectronUpdateUiBridge(windowRef) {
           : 'Verificar atualizações';
       }
     }
+    const globalBtn = ensureGlobalUpdateButton();
+    if (globalBtn) {
+      applyUpdateStateVisual(globalBtn, lastUpdateState);
+      globalBtn.setAttribute('title', lastUpdateMessage || 'Verificar atualizações');
+      const label = globalBtn.querySelector('span:last-child');
+      if (label) {
+        label.textContent = lastUpdateState === 'downloaded'
+          ? 'Instalar atualização'
+          : 'Atualizações';
+      }
+    }
 
     // Toasts claros no topo para status de atualização.
     if (!window.__desktopUpdateToastState) {
@@ -1223,6 +1271,7 @@ function installElectronUpdateUiBridge(windowRef) {
   const tick = () => {
     ensureUpdateListener();
     retryPatch();
+    ensureGlobalUpdateButton();
     ensureVersionBadge().catch(() => {});
   };
 
