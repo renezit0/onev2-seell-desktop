@@ -293,10 +293,24 @@ function installMacUnifiedTitlebar(windowRef) {
   strip.style.background = 'transparent';
   document.documentElement.appendChild(strip);
 
+  const sidebarCap = document.createElement('div');
+  sidebarCap.style.position = 'absolute';
+  sidebarCap.style.left = '0';
+  sidebarCap.style.top = '0';
+  sidebarCap.style.height = '100%';
+  sidebarCap.style.width = '0px';
+  sidebarCap.style.pointerEvents = 'none';
+  sidebarCap.style.background = '#1f232a';
+  strip.appendChild(sidebarCap);
+
   const applyColorsAndWidths = () => {
     const header = document.querySelector('[data-app-header]') || findFirstVisible(HEADER_SELECTORS, 38);
     const sidebar = document.querySelector('[data-app-sidebar]') || findSidebar();
     strip.style.background = 'transparent';
+    const sidebarColor = getBackground(sidebar, '#1f232a');
+    const sidebarWidth = sidebar ? Math.max(0, Math.round(sidebar.getBoundingClientRect().width)) : 0;
+    sidebarCap.style.width = sidebarWidth + 'px';
+    sidebarCap.style.background = sidebarColor;
 
     if (header) {
       if (!header.dataset.desktopTitlebarBaseTop) {
