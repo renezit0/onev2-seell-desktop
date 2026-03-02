@@ -306,7 +306,8 @@ function installMacUnifiedTitlebar(windowRef) {
   const applyColorsAndWidths = () => {
     const header = document.querySelector('[data-app-header]') || findFirstVisible(HEADER_SELECTORS, 38);
     const sidebar = document.querySelector('[data-app-sidebar]') || findSidebar();
-    strip.style.background = 'transparent';
+    const headerColor = getBackground(header, '#f3f4f6');
+    strip.style.background = headerColor;
     const sidebarColor = getBackground(sidebar, '#1f232a');
     const sidebarWidth = sidebar ? Math.max(0, Math.round(sidebar.getBoundingClientRect().width)) : 0;
     sidebarCap.style.width = sidebarWidth + 'px';
