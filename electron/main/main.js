@@ -1,7 +1,7 @@
 const path = require('path');
 const fs = require('fs');
 const http = require('http');
-const { app, BrowserWindow, ipcMain, shell } = require('electron');
+const { app, BrowserWindow, ipcMain, shell, session } = require('electron');
 const { autoUpdater } = require('electron-updater');
 const { CHANNELS, validateConfigSet } = require('../shared/ipc');
 
@@ -92,6 +92,56 @@ function readFileOrNull(filePath) {
   } catch {
     return null;
   }
+}
+
+function setHeader(headers, name, value) {
+  const headerKey = Object.keys(headers).find((key) => key.toLowerCase() === name.toLowerCase()) || name;
+  headers[headerKey] = Array.isArray(value) ? value : [String(value)];
+}
+
+function installDesktopCorsBridge() {
+  const rawOrigins = process.env.ONEV2_CORS_API_ORIGINS || 'https://api.seellbr.com';
+  const origins = rawOrigins
+    .split(',')
+    .map((item) => item.trim())
+    .filter(Boolean);
+
+  const urls = origins.map((origin) => {
+    try {
+      const parsed = new URL(origin);
+      return `${parsed.origin}/*`;
+    } catch {
+      return '';
+    }
+  }).filter(Boolean);
+
+  if (!urls.length) return;
+
+  const filter = { urls };
+  session.defaultSession.webRequest.onHeadersReceived(filter, (details, callback) => {
+    const requestOrigin =
+      details.requestHeaders?.Origin ||
+      details.requestHeaders?.origin ||
+      '';
+
+    const isDesktopOrigin =
+      requestOrigin.startsWith('http://127.0.0.1:') ||
+      requestOrigin.startsWith('http://localhost:');
+
+    if (!isDesktopOrigin) {
+      callback({ responseHeaders: details.responseHeaders });
+      return;
+    }
+
+    const responseHeaders = { ...(details.responseHeaders || {}) };
+    setHeader(responseHeaders, 'Access-Control-Allow-Origin', requestOrigin);
+    setHeader(responseHeaders, 'Access-Control-Allow-Credentials', 'true');
+    setHeader(responseHeaders, 'Access-Control-Allow-Methods', 'GET,POST,PUT,PATCH,DELETE,OPTIONS');
+    setHeader(responseHeaders, 'Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With');
+    setHeader(responseHeaders, 'Vary', 'Origin');
+
+    callback({ responseHeaders });
+  });
 }
 
 async function ensureRendererServer() {
@@ -954,6 +1004,7 @@ function setupAutoUpdater() {
 }
 
 app.whenReady().then(async () => {
+  installDesktopCorsBridge();
   await createWindow();
   registerIpc();
   setupAutoUpdater();
