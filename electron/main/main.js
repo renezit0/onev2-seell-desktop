@@ -191,19 +191,41 @@ async function ensureRendererServer() {
     res.end(body);
   });
 
-  await new Promise((resolve, reject) => {
-    rendererServer.once('error', reject);
-    rendererServer.listen(0, '127.0.0.1', () => {
+  const preferredPort = Number.parseInt(process.env.ONEV2_DESKTOP_PORT || '5175', 10);
+  const candidatePorts = [];
+  if (Number.isFinite(preferredPort) && preferredPort > 0) {
+    for (let i = 0; i <= 20; i += 1) {
+      candidatePorts.push(preferredPort + i);
+    }
+  }
+  candidatePorts.push(0);
+
+  const startServer = (index) => new Promise((resolve, reject) => {
+    const targetPort = candidatePorts[index];
+    const onError = (error) => {
+      if (error?.code === 'EADDRINUSE' && index < candidatePorts.length - 1) {
+        rendererServer.removeListener('error', onError);
+        startServer(index + 1).then(resolve).catch(reject);
+        return;
+      }
+      reject(error);
+    };
+
+    rendererServer.once('error', onError);
+    rendererServer.listen(targetPort, 'localhost', () => {
+      rendererServer.removeListener('error', onError);
       const address = rendererServer.address();
       const port = typeof address === 'object' && address ? address.port : null;
       if (!port) {
         reject(new Error('Falha ao descobrir porta do servidor local do renderer.'));
         return;
       }
-      rendererServerUrl = `http://127.0.0.1:${port}`;
+      rendererServerUrl = `http://localhost:${port}`;
       resolve();
     });
   });
+
+  await startServer(0);
 
   return rendererServerUrl;
 }
