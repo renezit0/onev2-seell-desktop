@@ -517,14 +517,17 @@ function installWindowsCustomTitlebar(windowRef) {
   const scrollFixStyle = document.createElement('style');
   scrollFixStyle.id = 'desktop-win-scroll-fix';
   scrollFixStyle.textContent =
-    'html.desktop-win-layout-fix, html.desktop-win-layout-fix body {' +
-    'overflow-x: hidden !important;' +
+    'html.desktop-win-layout-fix, body.desktop-win-layout-fix {' +
+    'height: 100dvh !important; overflow: hidden !important;' +
     '}' +
     'html.desktop-win-layout-fix #root {' +
-    'min-height: 100% !important; overflow-x: hidden !important;' +
+    'height: 100dvh !important; min-height: 100dvh !important; overflow: hidden !important;' +
+    '}' +
+    'html.desktop-win-layout-fix .content {' +
+    'display: flex !important; flex-direction: column !important; height: 100dvh !important; min-height: 0 !important; overflow: hidden !important;' +
     '}' +
     'html.desktop-win-layout-fix .pageContent, html.desktop-win-layout-fix [class*="pageContent"] {' +
-    'overflow-y: auto !important; overflow-x: hidden !important; padding-right: 10px !important;' +
+    'flex: 1 1 auto !important; min-height: 0 !important; overflow-y: auto !important; overflow-x: hidden !important;' +
     '}' +
     'html.desktop-win-layout-fix [data-app-header], html.desktop-win-layout-fix [data-app-sidebar], html.desktop-win-layout-fix [data-app-sidebar] * { max-width: 100vw !important; }' +
     'html.desktop-win-layout-fix * { overscroll-behavior: contain; }' +
@@ -591,8 +594,10 @@ function installWindowsCustomTitlebar(windowRef) {
 
     if (header && sidebar) {
       document.documentElement.classList.add('desktop-win-layout-fix');
+      document.body?.classList.add('desktop-win-layout-fix');
     } else {
       document.documentElement.classList.remove('desktop-win-layout-fix');
+      document.body?.classList.remove('desktop-win-layout-fix');
     }
 
     if (header && header.nextElementSibling instanceof HTMLElement) {
