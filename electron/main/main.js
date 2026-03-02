@@ -265,6 +265,221 @@ function installMacUnifiedTitlebar(windowRef) {
   windowRef.webContents.on('did-finish-load', inject);
 }
 
+function installWindowsCustomTitlebar(windowRef) {
+  if (process.platform !== 'win32') return;
+
+  const script = `
+(() => {
+  if (window.__desktopWindowsTitlebarInstalled) return;
+  window.__desktopWindowsTitlebarInstalled = true;
+
+  const BAR_HEIGHT = 44;
+  const SIDEBAR_SELECTORS = ['[data-app-sidebar]', '.app-sidebar', '.sidebar'];
+  const HEADER_SELECTORS = ['[data-app-header]', '.app-header', '.header', 'header'];
+
+  const getFirstVisible = (selectors, minHeight = 30) => {
+    for (const selector of selectors) {
+      const els = document.querySelectorAll(selector);
+      for (const el of els) {
+        const r = el.getBoundingClientRect();
+        if (r.width > 30 && r.height >= minHeight) return el;
+      }
+    }
+    return null;
+  };
+
+  const getColor = (el, fallback) => {
+    if (!el) return fallback;
+    const c = window.getComputedStyle(el).backgroundColor;
+    if (!c || c === 'transparent' || c === 'rgba(0, 0, 0, 0)') return fallback;
+    return c;
+  };
+
+  const style = document.createElement('style');
+  style.id = 'desktop-win-titlebar-style';
+  style.textContent = \`
+    #desktop-win-titlebar {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: ${BAR_HEIGHT}px;
+      z-index: 2147483646;
+      display: flex;
+      align-items: stretch;
+      user-select: none;
+      -webkit-user-select: none;
+    }
+    #desktop-win-titlebar .bar-drag {
+      flex: 1;
+      display: flex;
+      align-items: center;
+      padding: 0 14px;
+      gap: 10px;
+      -webkit-app-region: drag;
+      font: 600 13px/1.2 "Segoe UI", sans-serif;
+      color: rgba(17, 24, 39, 0.88);
+      letter-spacing: 0.2px;
+      backdrop-filter: saturate(1.15) blur(8px);
+    }
+    #desktop-win-titlebar .brand-dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 999px;
+      background: #2563eb;
+      box-shadow: 0 0 0 5px rgba(37, 99, 235, 0.15);
+      flex: 0 0 auto;
+    }
+    #desktop-win-titlebar .brand-text {
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      max-width: 340px;
+    }
+    #desktop-win-titlebar .window-controls {
+      display: flex;
+      align-items: center;
+      -webkit-app-region: no-drag;
+      margin-left: auto;
+      border-left: 1px solid rgba(100, 116, 139, 0.12);
+    }
+    #desktop-win-titlebar .window-btn {
+      width: 48px;
+      height: ${BAR_HEIGHT}px;
+      border: 0;
+      background: transparent;
+      color: #334155;
+      cursor: pointer;
+      display: grid;
+      place-items: center;
+      font-size: 13px;
+      transition: background-color 0.15s ease, color 0.15s ease;
+    }
+    #desktop-win-titlebar .window-btn:hover {
+      background: rgba(15, 23, 42, 0.08);
+      color: #111827;
+    }
+    #desktop-win-titlebar .window-btn.close:hover {
+      background: #e11d48;
+      color: #fff;
+    }
+    #desktop-win-titlebar .window-btn svg {
+      width: 11px;
+      height: 11px;
+      display: block;
+    }
+  \`;
+  document.documentElement.appendChild(style);
+
+  const bar = document.createElement('div');
+  bar.id = 'desktop-win-titlebar';
+  bar.innerHTML = \`
+    <div class="bar-drag">
+      <span class="brand-dot" aria-hidden="true"></span>
+      <span class="brand-text">oneV2 seeLL Desktop</span>
+    </div>
+    <div class="window-controls">
+      <button class="window-btn min" title="Minimizar" aria-label="Minimizar">
+        <svg viewBox="0 0 10 10" fill="none"><path d="M1 5.5h8" stroke="currentColor" stroke-width="1.2"/></svg>
+      </button>
+      <button class="window-btn max" title="Maximizar" aria-label="Maximizar">
+        <svg viewBox="0 0 10 10" fill="none"><rect x="1.5" y="1.5" width="7" height="7" stroke="currentColor" stroke-width="1.1"/></svg>
+      </button>
+      <button class="window-btn close" title="Fechar" aria-label="Fechar">
+        <svg viewBox="0 0 10 10" fill="none"><path d="M2 2l6 6M8 2L2 8" stroke="currentColor" stroke-width="1.2"/></svg>
+      </button>
+    </div>
+  \`;
+  document.documentElement.appendChild(bar);
+
+  const minBtn = bar.querySelector('.window-btn.min');
+  const maxBtn = bar.querySelector('.window-btn.max');
+  const closeBtn = bar.querySelector('.window-btn.close');
+  const dragArea = bar.querySelector('.bar-drag');
+
+  const safeCall = async (fn) => {
+    try { return await fn(); } catch { return null; }
+  };
+
+  minBtn?.addEventListener('click', () => safeCall(() => window.desktop?.minimize?.()));
+  closeBtn?.addEventListener('click', () => safeCall(() => window.desktop?.close?.()));
+  maxBtn?.addEventListener('click', () => safeCall(() => window.desktop?.toggleMaximize?.()));
+  dragArea?.addEventListener('dblclick', () => safeCall(() => window.desktop?.toggleMaximize?.()));
+
+  const setMaximizedVisual = (isMaximized) => {
+    if (!maxBtn) return;
+    maxBtn.innerHTML = isMaximized
+      ? '<svg viewBox="0 0 10 10" fill="none"><rect x="1.5" y="2.5" width="6" height="6" stroke="currentColor" stroke-width="1.1"/><path d="M3.5 1.5h5v5" stroke="currentColor" stroke-width="1.1"/></svg>'
+      : '<svg viewBox="0 0 10 10" fill="none"><rect x="1.5" y="1.5" width="7" height="7" stroke="currentColor" stroke-width="1.1"/></svg>';
+  };
+
+  if (window.desktop?.onWindowState) {
+    window.desktop.onWindowState((payload) => setMaximizedVisual(!!payload?.isMaximized));
+  }
+  safeCall(() => window.desktop?.isMaximized?.()).then((res) => setMaximizedVisual(!!res?.isMaximized));
+
+  const syncLayout = () => {
+    const header = getFirstVisible(HEADER_SELECTORS, 24);
+    const sidebar = getFirstVisible(SIDEBAR_SELECTORS, 40);
+    const sidebarColor = getColor(sidebar, '#1f232a');
+    const headerColor = getColor(header, '#f8fafc');
+    const sidebarWidth = sidebar ? Math.max(0, Math.round(sidebar.getBoundingClientRect().width)) : 0;
+    bar.style.background = \`linear-gradient(to right, \${sidebarColor} 0px, \${sidebarColor} \${sidebarWidth}px, \${headerColor} \${sidebarWidth}px, \${headerColor} 100%)\`;
+
+    if (header) {
+      if (!header.dataset.desktopWinBaseTop) {
+        header.dataset.desktopWinBaseTop = String(Number.parseFloat(window.getComputedStyle(header).top || '0') || 0);
+      }
+      const baseTop = Number.parseFloat(header.dataset.desktopWinBaseTop || '0') || 0;
+      header.style.setProperty('top', (baseTop + BAR_HEIGHT) + 'px', 'important');
+    }
+
+    if (sidebar) {
+      if (!sidebar.dataset.desktopWinBaseTop) {
+        sidebar.dataset.desktopWinBaseTop = String(Number.parseFloat(window.getComputedStyle(sidebar).top || '0') || 0);
+      }
+      const baseTop = Number.parseFloat(sidebar.dataset.desktopWinBaseTop || '0') || 0;
+      sidebar.style.setProperty('top', (baseTop + BAR_HEIGHT) + 'px', 'important');
+      sidebar.style.setProperty('height', \`calc(100vh - \${baseTop + BAR_HEIGHT}px)\`, 'important');
+    }
+
+    if (header && header.nextElementSibling instanceof HTMLElement) {
+      const content = header.nextElementSibling;
+      if (!content.dataset.desktopWinBasePaddingTop) {
+        content.dataset.desktopWinBasePaddingTop = String(Number.parseFloat(window.getComputedStyle(content).paddingTop || '0') || 0);
+      }
+      const basePad = Number.parseFloat(content.dataset.desktopWinBasePaddingTop || '0') || 0;
+      content.style.setProperty('padding-top', (basePad + BAR_HEIGHT) + 'px', 'important');
+    }
+  };
+
+  let raf = null;
+  const refresh = () => {
+    if (raf) return;
+    raf = requestAnimationFrame(() => {
+      raf = null;
+      syncLayout();
+    });
+  };
+
+  refresh();
+  window.addEventListener('resize', refresh, { passive: true });
+  document.addEventListener('transitionrun', refresh, true);
+  document.addEventListener('transitionend', refresh, true);
+  const mo = new MutationObserver(refresh);
+  mo.observe(document.documentElement, { childList: true, subtree: true, attributes: true, attributeFilter: ['class', 'style'] });
+})();
+`;
+
+  const inject = () => {
+    if (windowRef.isDestroyed()) return;
+    windowRef.webContents.executeJavaScript(script).catch(() => {});
+  };
+
+  windowRef.webContents.on('dom-ready', inject);
+  windowRef.webContents.on('did-finish-load', inject);
+}
+
 function createWindow() {
   const isMac = process.platform === 'darwin';
   mainWindow = new BrowserWindow({
@@ -351,6 +566,7 @@ function createWindow() {
   }
 
   installMacUnifiedTitlebar(mainWindow);
+  installWindowsCustomTitlebar(mainWindow);
 }
 
 function registerIpc() {
