@@ -1091,18 +1091,26 @@ function installElectronUpdateUiBridge(windowRef) {
   };
 
   const patchElectronSettingsButton = () => {
-    const pathInfo = normalize(window.location.pathname || '');
-    const hashInfo = normalize(window.location.hash || '');
-    const inUserConfigRoute = pathInfo.includes('userconfig') || hashInfo.includes('userconfig');
-    if (!inUserConfigRoute) return null;
+    const allButtons = Array.from(document.querySelectorAll('button, [role="button"], a'));
+    const backBtn = allButtons.find((el) => {
+      const txt = normalize(el.textContent);
+      return txt.includes('voltar para dashboard');
+    });
+    const saveBtn = allButtons.find((el) => {
+      const txt = normalize(el.textContent);
+      return txt.includes('salvar alteracoes') || txt.includes('salvar alterações');
+    });
+    const inUserConfigLikeScreen = !!backBtn || !!saveBtn;
+    if (!inUserConfigLikeScreen) return null;
 
     const host =
       document.querySelector('.userconfig-page .header-actions') ||
       document.querySelector('.userconfig-page .card-header .header-actions') ||
+      (backBtn?.parentElement || null) ||
       document.querySelector('.userconfig-page .card-header') ||
       null;
     if (!host) {
-      const saveButton = document.querySelector('.userconfig-page button[type="submit"], .userconfig-page .btn-primary');
+      const saveButton = saveBtn || document.querySelector('.userconfig-page button[type="submit"], .userconfig-page .btn-primary');
       if (saveButton && saveButton.parentElement) {
         const wrap = document.createElement('div');
         wrap.style.display = 'flex';
@@ -1168,6 +1176,12 @@ function installElectronUpdateUiBridge(windowRef) {
     }
 
     host.dataset.desktopElectronUpdateHost = '1';
+    if (backBtn?.parentElement === host) {
+      host.style.display = host.style.display || 'flex';
+      host.style.alignItems = host.style.alignItems || 'center';
+      host.style.gap = host.style.gap || '10px';
+      host.style.flexWrap = host.style.flexWrap || 'wrap';
+    }
 
     const existing = host.querySelector('[data-desktop-electron-update-btn="1"]');
     if (existing) return existing;
