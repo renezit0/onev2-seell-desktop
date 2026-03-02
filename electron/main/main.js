@@ -524,7 +524,7 @@ function installWindowsCustomTitlebar(windowRef) {
     'min-height: 100% !important; overflow-x: hidden !important;' +
     '}' +
     'html.desktop-win-layout-fix .pageContent, html.desktop-win-layout-fix [class*="pageContent"] {' +
-    'overflow-y: auto !important; overflow-y: overlay !important; overflow-x: hidden !important;' +
+    'overflow-y: auto !important; overflow-x: hidden !important; padding-right: 10px !important;' +
     '}' +
     'html.desktop-win-layout-fix [data-app-header], html.desktop-win-layout-fix [data-app-sidebar], html.desktop-win-layout-fix [data-app-sidebar] * { max-width: 100vw !important; }' +
     'html.desktop-win-layout-fix * { overscroll-behavior: contain; }' +
