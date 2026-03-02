@@ -535,29 +535,27 @@ function installWindowsCustomTitlebar(windowRef) {
     '}' +
     'html.desktop-win-layout-fix * { overscroll-behavior: contain; }' +
     'html.desktop-win-layout-fix .desktop-win-scroll-target {' +
-    'scrollbar-width: none;' +
-    'scrollbar-color: rgba(71, 85, 105, 0.58) transparent;' +
+    'scrollbar-gutter: stable !important;' +
+    'scrollbar-width: thin;' +
+    'scrollbar-color: transparent transparent;' +
     '}' +
     'html.desktop-win-layout-fix .desktop-win-scroll-target::-webkit-scrollbar {' +
-    'width: 0; height: 0;' +
-    '}' +
-    'html.desktop-win-layout-fix .desktop-win-scroll-target:hover::-webkit-scrollbar, html.desktop-win-layout-fix.desktop-win-scroll-active .desktop-win-scroll-target::-webkit-scrollbar {' +
     'width: 8px; height: 8px;' +
     '}' +
     'html.desktop-win-layout-fix .desktop-win-scroll-target::-webkit-scrollbar-track {' +
     'background: transparent; margin: 2px;' +
     '}' +
     'html.desktop-win-layout-fix .desktop-win-scroll-target::-webkit-scrollbar-thumb {' +
-    'background: rgba(71, 85, 105, 0.5); border-radius: 999px; border: 2px solid transparent; background-clip: padding-box; min-height: 30px;' +
+    'background: transparent; border-radius: 999px; border: 2px solid transparent; background-clip: padding-box; min-height: 30px;' +
     '}' +
-    'html.desktop-win-layout-fix .desktop-win-scroll-target::-webkit-scrollbar-thumb:hover {' +
+    'html.desktop-win-layout-fix .desktop-win-scroll-target:hover::-webkit-scrollbar-thumb, html.desktop-win-layout-fix.desktop-win-scroll-active .desktop-win-scroll-target::-webkit-scrollbar-thumb {' +
     'background: rgba(51, 65, 85, 0.72); border: 2px solid transparent; background-clip: padding-box;' +
     '}' +
     'html.desktop-win-layout-fix .desktop-win-scroll-target::-webkit-scrollbar-corner {' +
     'background: transparent;' +
     '}' +
     'html.desktop-win-layout-fix .desktop-win-scroll-target:hover, html.desktop-win-layout-fix.desktop-win-scroll-active .desktop-win-scroll-target {' +
-    'scrollbar-width: thin;' +
+    'scrollbar-color: rgba(51, 65, 85, 0.72) transparent;' +
     '}';
   document.documentElement.appendChild(scrollFixStyle);
 
