@@ -548,25 +548,55 @@ function installWindowsCustomTitlebar(windowRef) {
     'html.desktop-win-layout-fix .desktop-win-scroll-target::-webkit-scrollbar-thumb {' +
     'background: transparent; border-radius: 999px; border: 2px solid transparent; background-clip: padding-box; min-height: 30px;' +
     '}' +
-    'html.desktop-win-layout-fix .desktop-win-scroll-target:hover::-webkit-scrollbar-thumb, html.desktop-win-layout-fix.desktop-win-scroll-active .desktop-win-scroll-target::-webkit-scrollbar-thumb {' +
+    'html.desktop-win-layout-fix.desktop-win-scroll-active .desktop-win-scroll-target::-webkit-scrollbar-thumb {' +
     'background: rgba(51, 65, 85, 0.72); border: 2px solid transparent; background-clip: padding-box;' +
     '}' +
     'html.desktop-win-layout-fix .desktop-win-scroll-target::-webkit-scrollbar-corner {' +
     'background: transparent;' +
     '}' +
-    'html.desktop-win-layout-fix .desktop-win-scroll-target:hover, html.desktop-win-layout-fix.desktop-win-scroll-active .desktop-win-scroll-target {' +
+    'html.desktop-win-layout-fix.desktop-win-scroll-active .desktop-win-scroll-target {' +
     'scrollbar-color: rgba(51, 65, 85, 0.72) transparent;' +
     '}';
   document.documentElement.appendChild(scrollFixStyle);
 
   let currentScrollHost = null;
   let clearScrollActiveTimer = null;
+  const SCROLL_EDGE_ZONE = 14;
   const markScrollActive = () => {
     document.documentElement.classList.add('desktop-win-scroll-active');
     if (clearScrollActiveTimer) clearTimeout(clearScrollActiveTimer);
     clearScrollActiveTimer = setTimeout(() => {
       document.documentElement.classList.remove('desktop-win-scroll-active');
     }, 820);
+  };
+
+  const handlePointerMove = (event) => {
+    if (!currentScrollHost) return;
+    const rect = currentScrollHost.getBoundingClientRect();
+    const pointerX = Number(event?.clientX ?? -1);
+    const pointerY = Number(event?.clientY ?? -1);
+    const inside =
+      pointerX >= rect.left &&
+      pointerX <= rect.right &&
+      pointerY >= rect.top &&
+      pointerY <= rect.bottom;
+    if (!inside) return;
+
+    const nearRightEdge = pointerX >= (rect.right - SCROLL_EDGE_ZONE);
+    if (nearRightEdge) {
+      markScrollActive();
+      return;
+    }
+
+    if (clearScrollActiveTimer) clearTimeout(clearScrollActiveTimer);
+    clearScrollActiveTimer = setTimeout(() => {
+      document.documentElement.classList.remove('desktop-win-scroll-active');
+    }, 120);
+  };
+
+  const handlePointerLeave = () => {
+    if (clearScrollActiveTimer) clearTimeout(clearScrollActiveTimer);
+    document.documentElement.classList.remove('desktop-win-scroll-active');
   };
 
   const bindScrollHost = (host) => {
@@ -576,14 +606,16 @@ function installWindowsCustomTitlebar(windowRef) {
       currentScrollHost.classList.remove('desktop-win-scroll-target');
       currentScrollHost.removeEventListener('scroll', markScrollActive, { passive: true });
       currentScrollHost.removeEventListener('wheel', markScrollActive, { passive: true });
-      currentScrollHost.removeEventListener('mouseenter', markScrollActive);
+      currentScrollHost.removeEventListener('mousemove', handlePointerMove);
+      currentScrollHost.removeEventListener('mouseleave', handlePointerLeave);
       currentScrollHost.removeEventListener('touchmove', markScrollActive, { passive: true });
     }
     currentScrollHost = host;
     currentScrollHost.classList.add('desktop-win-scroll-target');
     currentScrollHost.addEventListener('scroll', markScrollActive, { passive: true });
     currentScrollHost.addEventListener('wheel', markScrollActive, { passive: true });
-    currentScrollHost.addEventListener('mouseenter', markScrollActive);
+    currentScrollHost.addEventListener('mousemove', handlePointerMove);
+    currentScrollHost.addEventListener('mouseleave', handlePointerLeave);
     currentScrollHost.addEventListener('touchmove', markScrollActive, { passive: true });
   };
 
