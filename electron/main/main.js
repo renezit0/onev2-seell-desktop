@@ -1402,6 +1402,138 @@ function installElectronUpdateUiBridge(windowRef) {
   windowRef.webContents.on('did-finish-load', inject);
 }
 
+function installDesktopHudOverlay(windowRef) {
+  const script = `
+(() => {
+  if (window.__desktopHudOverlayInstalled) return;
+  window.__desktopHudOverlayInstalled = true;
+
+  const normalize = (value) =>
+    String(value || '')
+      .toLowerCase()
+      .normalize('NFD')
+      .replace(/[\\u0300-\\u036f]/g, '')
+      .replace(/\\s+/g, ' ')
+      .trim();
+
+  let state = 'idle';
+  let message = 'Verificar atualizações';
+  let hudBtn = null;
+  let versionBadge = null;
+
+  const ensureVersion = async () => {
+    if (versionBadge && document.contains(versionBadge)) return;
+    versionBadge = document.getElementById('desktop-hud-version');
+    if (versionBadge) return;
+    const versionRes = await window.desktop?.getVersion?.();
+    const version = String(versionRes?.version || 'local');
+    const el = document.createElement('div');
+    el.id = 'desktop-hud-version';
+    el.textContent = 'v.' + version;
+    el.style.position = 'fixed';
+    el.style.right = '96px';
+    el.style.bottom = '10px';
+    el.style.zIndex = '2147483647';
+    el.style.pointerEvents = 'none';
+    el.style.font = '700 10px/1 "Quicksand", "Segoe UI", sans-serif';
+    el.style.color = 'rgba(71, 85, 105, 0.92)';
+    el.style.background = 'rgba(255, 255, 255, 0.85)';
+    el.style.padding = '2px 5px';
+    el.style.borderRadius = '999px';
+    el.style.border = '1px solid rgba(148, 163, 184, 0.35)';
+    el.style.backdropFilter = 'blur(4px)';
+    document.body.appendChild(el);
+    versionBadge = el;
+  };
+
+  const onClick = async (event) => {
+    event.preventDefault();
+    event.stopPropagation();
+    if (!window.desktop) return;
+    if (state === 'downloaded') {
+      await window.desktop.installUpdate();
+      return;
+    }
+    await window.desktop.checkForUpdates();
+  };
+
+  const ensureButton = () => {
+    if (!hudBtn || !document.contains(hudBtn)) {
+      hudBtn = document.createElement('button');
+      hudBtn.type = 'button';
+      hudBtn.id = 'desktop-hud-update-btn';
+      hudBtn.style.position = 'fixed';
+      hudBtn.style.zIndex = '2147483647';
+      hudBtn.style.display = 'inline-flex';
+      hudBtn.style.alignItems = 'center';
+      hudBtn.style.gap = '8px';
+      hudBtn.style.padding = '9px 12px';
+      hudBtn.style.border = '1px solid rgba(30, 64, 175, 0.22)';
+      hudBtn.style.borderRadius = '12px';
+      hudBtn.style.background = '#2563eb';
+      hudBtn.style.color = '#fff';
+      hudBtn.style.font = '700 12px/1 "Segoe UI", sans-serif';
+      hudBtn.style.cursor = 'pointer';
+      hudBtn.style.boxShadow = '0 8px 18px rgba(37, 99, 235, 0.24)';
+      hudBtn.addEventListener('click', onClick, true);
+      document.body.appendChild(hudBtn);
+    }
+
+    const backCandidates = Array.from(document.querySelectorAll('button, [role="button"], a'));
+    const backBtn = backCandidates.find((el) => normalize(el.textContent).includes('voltar para dashboard'));
+    if (backBtn) {
+      const rect = backBtn.getBoundingClientRect();
+      const width = Math.max(140, hudBtn.offsetWidth || 140);
+      hudBtn.style.left = Math.max(16, Math.round(rect.left - width - 12)) + 'px';
+      hudBtn.style.top = Math.max(12, Math.round(rect.top + ((rect.height - 36) / 2))) + 'px';
+      hudBtn.style.right = 'auto';
+      hudBtn.style.bottom = 'auto';
+    } else {
+      hudBtn.style.right = '92px';
+      hudBtn.style.bottom = '34px';
+      hudBtn.style.left = 'auto';
+      hudBtn.style.top = 'auto';
+    }
+
+    const dotColor =
+      state === 'downloaded' ? '#10b981' :
+      state === 'error' ? '#ef4444' :
+      (state === 'available' || state === 'checking') ? '#f59e0b' :
+      '#bfdbfe';
+    const label = state === 'downloaded' ? 'Instalar atualização' : 'Atualizações';
+    hudBtn.innerHTML = '<span style="display:inline-block;width:8px;height:8px;border-radius:999px;background:' + dotColor + ';"></span><span>' + label + '</span>';
+    hudBtn.setAttribute('title', message || 'Verificar atualizações');
+  };
+
+  const tick = () => {
+    ensureVersion().catch(() => {});
+    ensureButton();
+  };
+
+  if (window.desktop?.onUpdateStatus) {
+    window.desktop.onUpdateStatus((payload) => {
+      state = String(payload?.state || 'idle');
+      message = String(payload?.message || 'Verificar atualizações');
+      tick();
+    });
+  }
+
+  tick();
+  setInterval(tick, 1200);
+  const mo = new MutationObserver(() => tick());
+  mo.observe(document.documentElement, { childList: true, subtree: true, attributes: true, attributeFilter: ['class', 'style'] });
+})();
+`;
+
+  const inject = () => {
+    if (windowRef.isDestroyed()) return;
+    windowRef.webContents.executeJavaScript(script).catch(() => {});
+  };
+
+  windowRef.webContents.on('dom-ready', inject);
+  windowRef.webContents.on('did-finish-load', inject);
+}
+
 function installDesktopInteractionGuards(windowRef) {
   const script = `
 (() => {
@@ -1577,6 +1709,7 @@ async function createWindow() {
   installMacUnifiedTitlebar(mainWindow);
   installWindowsCustomTitlebar(mainWindow);
   installElectronUpdateUiBridge(mainWindow);
+  installDesktopHudOverlay(mainWindow);
   installDesktopInteractionGuards(mainWindow);
 }
 
