@@ -1,15 +1,26 @@
 const path = require('path');
 const fs = require('fs');
-const http = require('http');
-const { app, BrowserWindow, ipcMain, shell, session } = require('electron');
+const { pathToFileURL } = require('url');
+const { app, BrowserWindow, ipcMain, shell, session, protocol, net } = require('electron');
 const { autoUpdater } = require('electron-updater');
 const { CHANNELS, validateConfigSet } = require('../shared/ipc');
 
 let mainWindow;
 let autoUpdateTimer = null;
 let hasDownloadedUpdate = false;
-let rendererServer = null;
-let rendererServerUrl = null;
+
+protocol.registerSchemesAsPrivileged([
+  {
+    scheme: 'app',
+    privileges: {
+      standard: true,
+      secure: true,
+      supportFetchAPI: true,
+      corsEnabled: true,
+      stream: true
+    }
+  }
+]);
 
 if (process.platform === 'win32') {
   app.disableHardwareAcceleration();
@@ -86,14 +97,6 @@ function getContentType(filePath) {
   return byExt[ext] || 'application/octet-stream';
 }
 
-function readFileOrNull(filePath) {
-  try {
-    return fs.readFileSync(filePath);
-  } catch {
-    return null;
-  }
-}
-
 function setHeader(headers, name, value) {
   const headerKey = Object.keys(headers).find((key) => key.toLowerCase() === name.toLowerCase()) || name;
   headers[headerKey] = Array.isArray(value) ? value : [String(value)];
@@ -126,7 +129,9 @@ function installDesktopCorsBridge() {
 
     const isDesktopOrigin =
       requestOrigin.startsWith('http://127.0.0.1:') ||
-      requestOrigin.startsWith('http://localhost:');
+      requestOrigin.startsWith('http://localhost:') ||
+      requestOrigin.startsWith('app://') ||
+      requestOrigin === 'null';
 
     if (!isDesktopOrigin) {
       callback({ responseHeaders: details.responseHeaders });
@@ -144,24 +149,20 @@ function installDesktopCorsBridge() {
   });
 }
 
-async function ensureRendererServer() {
-  if (rendererServer && rendererServerUrl) return rendererServerUrl;
-
+function installAppProtocol() {
   const rootDir = getRendererDistPath();
   if (!fs.existsSync(path.join(rootDir, 'index.html'))) {
     throw new Error(`renderer/dist/index.html não encontrado em: ${rootDir}`);
   }
 
-  rendererServer = http.createServer((req, res) => {
-    const reqUrl = new URL(req.url || '/', 'http://127.0.0.1');
+  protocol.handle('app', async (request) => {
+    const reqUrl = new URL(request.url || 'app://local/index.html');
     let pathname = decodeURIComponent(reqUrl.pathname || '/');
     if (pathname === '/') pathname = '/index.html';
 
     let targetPath = resolveStaticFilePath(rootDir, pathname);
     if (!targetPath) {
-      res.writeHead(403, { 'Content-Type': 'text/plain; charset=utf-8' });
-      res.end('Forbidden');
-      return;
+      targetPath = path.join(rootDir, 'index.html');
     }
 
     try {
@@ -173,53 +174,20 @@ async function ensureRendererServer() {
       // fallback SPA abaixo
     }
 
-    let body = readFileOrNull(targetPath);
-    if (!body) {
-      body = readFileOrNull(path.join(rootDir, 'index.html'));
+    if (!fs.existsSync(targetPath)) {
       targetPath = path.join(rootDir, 'index.html');
-      if (!body) {
-        res.writeHead(500, { 'Content-Type': 'text/plain; charset=utf-8' });
-        res.end('index.html não encontrado');
-        return;
-      }
     }
 
-    res.writeHead(200, {
-      'Content-Type': getContentType(targetPath),
-      'Cache-Control': 'no-cache'
-    });
-    res.end(body);
+    if (!fs.existsSync(targetPath)) {
+      return new Response('index.html não encontrado', { status: 500 });
+    }
+
+    const response = await net.fetch(pathToFileURL(targetPath).toString());
+    const headers = new Headers(response.headers);
+    headers.set('Cache-Control', 'no-cache');
+    headers.set('Content-Type', getContentType(targetPath));
+    return new Response(response.body, { status: response.status, headers });
   });
-
-  const preferredPort = Number.parseInt(process.env.ONEV2_DESKTOP_PORT || '5174', 10);
-  const targetPort = Number.isFinite(preferredPort) && preferredPort > 0 ? preferredPort : 5174;
-
-  const startServer = () => new Promise((resolve, reject) => {
-    const onError = (error) => {
-      if (error?.code === 'EADDRINUSE') {
-        reject(new Error(`Porta ${targetPort} ocupada. Libere a porta ou defina ONEV2_DESKTOP_PORT.`));
-        return;
-      }
-      reject(error);
-    };
-
-    rendererServer.once('error', onError);
-    rendererServer.listen(targetPort, 'localhost', () => {
-      rendererServer.removeListener('error', onError);
-      const address = rendererServer.address();
-      const port = typeof address === 'object' && address ? address.port : null;
-      if (!port) {
-        reject(new Error('Falha ao descobrir porta do servidor local do renderer.'));
-        return;
-      }
-      rendererServerUrl = `http://localhost:${port}`;
-      resolve();
-    });
-  });
-
-  await startServer();
-
-  return rendererServerUrl;
 }
 
 async function resolveRendererEntry() {
@@ -228,7 +196,7 @@ async function resolveRendererEntry() {
   }
   // Override opcional para apontar para URL remota (apenas quando necessário).
   if (process.env.ONEV2_APP_URL) return process.env.ONEV2_APP_URL;
-  return ensureRendererServer();
+  return 'app://local/index.html';
 }
 
 function installMacUnifiedTitlebar(windowRef) {
@@ -872,7 +840,7 @@ async function createWindow() {
 
   const entry = await resolveRendererEntry();
   rendererEntryForNav = entry;
-  if (entry.startsWith('http')) {
+  if (entry.startsWith('http') || entry.startsWith('app://')) {
     mainWindow.loadURL(entry);
   } else {
     mainWindow.loadFile(entry);
@@ -1018,6 +986,7 @@ function setupAutoUpdater() {
 }
 
 app.whenReady().then(async () => {
+  installAppProtocol();
   installDesktopCorsBridge();
   await createWindow();
   registerIpc();
@@ -1033,13 +1002,6 @@ app.on('window-all-closed', () => {
 });
 
 app.on('before-quit', () => {
-  if (rendererServer) {
-    try {
-      rendererServer.close();
-    } catch {}
-    rendererServer = null;
-    rendererServerUrl = null;
-  }
   if (autoUpdateTimer) {
     clearInterval(autoUpdateTimer);
     autoUpdateTimer = null;
