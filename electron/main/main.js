@@ -52,12 +52,8 @@ function getRendererEntry() {
   if (process.env.VITE_DEV_SERVER_URL) {
     return process.env.VITE_DEV_SERVER_URL;
   }
-  if (process.env.ONEV2_APP_URL) {
-    return process.env.ONEV2_APP_URL;
-  }
-  if (app.isPackaged) {
-    return 'https://onev2.seellbr.com';
-  }
+  // Override opcional para apontar para URL remota (apenas quando necessário).
+  if (process.env.ONEV2_APP_URL) return process.env.ONEV2_APP_URL;
   return path.join(__dirname, '../../renderer/dist/index.html');
 }
 
