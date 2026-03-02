@@ -771,24 +771,53 @@ function installElectronUpdateUiBridge(windowRef) {
       .trim();
 
   const showBubble = (message, type = 'info') => {
-    const bubble = document.createElement('div');
-    bubble.style.position = 'fixed';
-    bubble.style.right = '16px';
-    bubble.style.top = '126px';
-    bubble.style.zIndex = '2147483647';
-    bubble.style.padding = '11px 14px';
-    bubble.style.borderRadius = '10px';
-    bubble.style.font = '600 12px/1.4 "Segoe UI", sans-serif';
-    bubble.style.color = '#fff';
-    bubble.style.maxWidth = '360px';
-    bubble.style.boxShadow = '0 10px 24px rgba(0,0,0,0.24)';
-    bubble.style.background =
-      type === 'error' ? '#b91c1c' :
-      type === 'success' ? '#047857' :
-      type === 'warn' ? '#b45309' : '#1d4ed8';
-    bubble.textContent = message;
-    document.body.appendChild(bubble);
-    setTimeout(() => bubble.remove(), 3200);
+    const toastType = type === 'warn' ? 'warning' : (type || 'info');
+    const toastTitle =
+      toastType === 'success' ? 'Sucesso!' :
+      toastType === 'error' ? 'Atenção!' :
+      toastType === 'warning' ? 'Atenção!' : 'Informação';
+    const toastIcon =
+      toastType === 'success' ? 'fa-check-circle' :
+      toastType === 'error' ? 'fa-times-circle' :
+      toastType === 'warning' ? 'fa-exclamation-triangle' : 'fa-info-circle';
+
+    const container = document.getElementById('toastContainer');
+    if (!container) return;
+
+    const toast = document.createElement('div');
+    toast.className = 'toast ' + toastType;
+    toast.setAttribute('role', 'alert');
+    toast.setAttribute('aria-live', 'polite');
+    toast.innerHTML =
+      '<div class="toast-icon"><i class="fas ' + toastIcon + '"></i></div>' +
+      '<div class="toast-content">' +
+      '<div class="toast-title">' + toastTitle + '</div>' +
+      '<div class="toast-message"></div>' +
+      '</div>' +
+      '<button type="button" class="toast-close" aria-label="Fechar"><i class="fas fa-times"></i></button>';
+
+    const messageEl = toast.querySelector('.toast-message');
+    if (messageEl) messageEl.textContent = String(message || '');
+
+    const close = () => {
+      if (toast.classList.contains('removing')) return;
+      toast.classList.add('removing');
+      setTimeout(() => toast.remove(), 300);
+    };
+
+    const closeBtn = toast.querySelector('.toast-close');
+    closeBtn?.addEventListener('click', close);
+
+    container.appendChild(toast);
+    const toasts = Array.from(container.querySelectorAll('.toast'));
+    if (toasts.length > 3) {
+      const extra = toasts.length - 3;
+      for (let i = 0; i < extra; i += 1) {
+        const t = toasts[i];
+        if (t && t !== toast) t.remove();
+      }
+    }
+    setTimeout(close, 3600);
   };
 
   const applyUpdateStateVisual = (button, state) => {
@@ -823,6 +852,29 @@ function installElectronUpdateUiBridge(windowRef) {
     if (!result?.ok) {
       showBubble('Falha ao verificar atualização.', 'error');
     }
+  };
+
+  const ensureVersionBadge = async () => {
+    const existing = document.getElementById('desktop-electron-version');
+    if (existing) return;
+    const versionRes = await window.desktop?.getVersion?.();
+    const version = String(versionRes?.version || 'unknown');
+    const badge = document.createElement('div');
+    badge.id = 'desktop-electron-version';
+    badge.textContent = 'electron - v.' + version;
+    badge.style.position = 'fixed';
+    badge.style.right = '10px';
+    badge.style.bottom = '8px';
+    badge.style.zIndex = '2147483645';
+    badge.style.pointerEvents = 'none';
+    badge.style.font = '600 10px/1 "Quicksand", "Segoe UI", sans-serif';
+    badge.style.color = 'rgba(100, 116, 139, 0.92)';
+    badge.style.background = 'rgba(255, 255, 255, 0.78)';
+    badge.style.padding = '3px 6px';
+    badge.style.borderRadius = '999px';
+    badge.style.border = '1px solid rgba(148, 163, 184, 0.35)';
+    badge.style.backdropFilter = 'blur(4px)';
+    document.body.appendChild(badge);
   };
 
   const patchPwaButton = () => {
@@ -962,7 +1014,7 @@ function installElectronUpdateUiBridge(windowRef) {
     if (state === 'checking') showBubble('Verificando atualização do aplicativo...', 'info');
     if (state === 'available') showBubble('Nova versão encontrada. Download iniciado.', 'warn');
     if (state === 'not-available') showBubble('Aplicativo já está atualizado.', 'success');
-    if (state === 'downloaded') showBubble('Atualização pronta para instalar. Feche e abra o app.', 'success');
+    if (state === 'downloaded') showBubble('Atualização pronta. Clique para instalar e reiniciar.', 'success');
     if (state === 'error') showBubble(lastUpdateMessage || 'Falha ao atualizar o aplicativo.', 'error');
   });
 
@@ -978,6 +1030,7 @@ function installElectronUpdateUiBridge(windowRef) {
   });
 
   retryPatch();
+  ensureVersionBadge().catch(() => {});
 })();
 `;
 
@@ -1128,7 +1181,7 @@ function registerIpc() {
       return { ok: false, skipped: true, reason: 'update-not-downloaded' };
     }
     setImmediate(() => {
-      autoUpdater.quitAndInstall(false, true);
+      autoUpdater.quitAndInstall(true, true);
     });
     return { ok: true };
   });

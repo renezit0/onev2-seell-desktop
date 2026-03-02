@@ -68,10 +68,10 @@
       "icon": "resources/icons/icon.ico"
     },
     "nsis": {
-      "oneClick": false,
+      "oneClick": true,
       "perMachine": false,
       "allowElevation": true,
-      "allowToChangeInstallationDirectory": true,
+      "allowToChangeInstallationDirectory": false,
       "runAfterFinish": true,
       "differentialPackage": true,
       "createDesktopShortcut": true,
