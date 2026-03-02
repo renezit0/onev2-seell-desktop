@@ -8,7 +8,6 @@ const { CHANNELS, validateConfigSet } = require('../shared/ipc');
 let mainWindow;
 let autoUpdateTimer = null;
 let hasDownloadedUpdate = false;
-const RELEASES_LATEST_DOWNLOAD_URL = 'https://github.com/renezit0/onev2-seell-desktop/releases/latest/download';
 
 protocol.registerSchemesAsPrivileged([
   {
@@ -467,7 +466,7 @@ function installWindowsCustomTitlebar(windowRef) {
   controls.style.display = 'flex';
   controls.style.alignItems = 'flex-start';
   controls.style.gap = '10px';
-  controls.style.padding = '11px 14px 0 8px';
+  controls.style.padding = '14px 14px 0 8px';
   controls.style.webkitAppRegion = 'no-drag';
   controls.style.pointerEvents = 'auto';
 
@@ -519,32 +518,28 @@ function installWindowsCustomTitlebar(windowRef) {
   scrollFixStyle.id = 'desktop-win-scroll-fix';
   scrollFixStyle.textContent =
     'html.desktop-win-layout-fix, body.desktop-win-layout-fix {' +
-    'height: 100dvh !important; overflow: hidden !important;' +
+    'scrollbar-gutter: auto !important;' +
     '}' +
-    'html.desktop-win-layout-fix #root {' +
-    'height: 100dvh !important; min-height: 100dvh !important; overflow: hidden !important;' +
+    'html.desktop-win-layout-fix *, body.desktop-win-layout-fix * {' +
+    'scrollbar-gutter: auto !important;' +
     '}' +
-    'html.desktop-win-layout-fix .content {' +
-    'display: flex !important; flex-direction: column !important; height: 100dvh !important; min-height: 0 !important; overflow: hidden !important;' +
+    'html.desktop-win-layout-fix .pageContent, html.desktop-win-layout-fix [class*="pageContent"], html.desktop-win-layout-fix main, html.desktop-win-layout-fix [role="main"] {' +
+    'overflow-x: hidden !important;' +
     '}' +
-    'html.desktop-win-layout-fix .pageContent, html.desktop-win-layout-fix [class*="pageContent"] {' +
-    'flex: 1 1 auto !important; min-height: 0 !important; overflow-y: auto !important; overflow-y: overlay !important; overflow-x: hidden !important;' +
-    '}' +
-    'html.desktop-win-layout-fix [data-app-header], html.desktop-win-layout-fix [data-app-sidebar], html.desktop-win-layout-fix [data-app-sidebar] * { max-width: 100vw !important; }' +
     'html.desktop-win-layout-fix * { overscroll-behavior: contain; }' +
-    'html.desktop-win-layout-fix .pageContent::-webkit-scrollbar, html.desktop-win-layout-fix [class*="pageContent"]::-webkit-scrollbar {' +
-    'width: 8px; height: 8px;' +
+    'html.desktop-win-layout-fix ::-webkit-scrollbar {' +
+    'width: 9px; height: 9px;' +
     '}' +
-    'html.desktop-win-layout-fix .pageContent::-webkit-scrollbar-track, html.desktop-win-layout-fix [class*="pageContent"]::-webkit-scrollbar-track {' +
+    'html.desktop-win-layout-fix ::-webkit-scrollbar-track {' +
     'background: transparent;' +
     '}' +
-    'html.desktop-win-layout-fix .pageContent::-webkit-scrollbar-thumb, html.desktop-win-layout-fix [class*="pageContent"]::-webkit-scrollbar-thumb {' +
+    'html.desktop-win-layout-fix ::-webkit-scrollbar-thumb {' +
     'background: rgba(100, 116, 139, 0.45); border-radius: 999px; border: 2px solid transparent; background-clip: padding-box;' +
     '}' +
-    'html.desktop-win-layout-fix .pageContent::-webkit-scrollbar-thumb:hover, html.desktop-win-layout-fix [class*="pageContent"]::-webkit-scrollbar-thumb:hover {' +
+    'html.desktop-win-layout-fix ::-webkit-scrollbar-thumb:hover {' +
     'background: rgba(71, 85, 105, 0.68); border: 2px solid transparent; background-clip: padding-box;' +
     '}' +
-    'html.desktop-win-layout-fix .pageContent::-webkit-scrollbar-corner, html.desktop-win-layout-fix [class*="pageContent"]::-webkit-scrollbar-corner {' +
+    'html.desktop-win-layout-fix ::-webkit-scrollbar-corner {' +
     'background: transparent;' +
     '}';
   document.documentElement.appendChild(scrollFixStyle);
@@ -686,7 +681,7 @@ function installElectronUpdateUiBridge(windowRef) {
     const bubble = document.createElement('div');
     bubble.style.position = 'fixed';
     bubble.style.right = '16px';
-    bubble.style.top = '88px';
+    bubble.style.top = '126px';
     bubble.style.zIndex = '2147483647';
     bubble.style.padding = '11px 14px';
     bubble.style.borderRadius = '10px';
@@ -1061,15 +1056,6 @@ function registerIpc() {
 }
 
 function setupAutoUpdater() {
-  try {
-    autoUpdater.setFeedURL({
-      provider: 'generic',
-      url: RELEASES_LATEST_DOWNLOAD_URL
-    });
-  } catch {
-    // fallback para provider github do electron-builder
-  }
-
   autoUpdater.autoDownload = true;
   autoUpdater.autoInstallOnAppQuit = true;
 
