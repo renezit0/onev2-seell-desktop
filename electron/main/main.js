@@ -524,10 +524,25 @@ function installWindowsCustomTitlebar(windowRef) {
     'min-height: 100% !important; overflow-x: hidden !important;' +
     '}' +
     'html.desktop-win-layout-fix .pageContent, html.desktop-win-layout-fix [class*="pageContent"] {' +
-    'overflow-y: auto !important; overflow-x: hidden !important;' +
+    'overflow-y: auto !important; overflow-y: overlay !important; overflow-x: hidden !important;' +
     '}' +
     'html.desktop-win-layout-fix [data-app-header], html.desktop-win-layout-fix [data-app-sidebar], html.desktop-win-layout-fix [data-app-sidebar] * { max-width: 100vw !important; }' +
-    'html.desktop-win-layout-fix * { overscroll-behavior: contain; }';
+    'html.desktop-win-layout-fix * { overscroll-behavior: contain; }' +
+    'html.desktop-win-layout-fix .pageContent::-webkit-scrollbar, html.desktop-win-layout-fix [class*="pageContent"]::-webkit-scrollbar {' +
+    'width: 8px; height: 8px;' +
+    '}' +
+    'html.desktop-win-layout-fix .pageContent::-webkit-scrollbar-track, html.desktop-win-layout-fix [class*="pageContent"]::-webkit-scrollbar-track {' +
+    'background: transparent;' +
+    '}' +
+    'html.desktop-win-layout-fix .pageContent::-webkit-scrollbar-thumb, html.desktop-win-layout-fix [class*="pageContent"]::-webkit-scrollbar-thumb {' +
+    'background: rgba(100, 116, 139, 0.45); border-radius: 999px; border: 2px solid transparent; background-clip: padding-box;' +
+    '}' +
+    'html.desktop-win-layout-fix .pageContent::-webkit-scrollbar-thumb:hover, html.desktop-win-layout-fix [class*="pageContent"]::-webkit-scrollbar-thumb:hover {' +
+    'background: rgba(71, 85, 105, 0.68); border: 2px solid transparent; background-clip: padding-box;' +
+    '}' +
+    'html.desktop-win-layout-fix .pageContent::-webkit-scrollbar-corner, html.desktop-win-layout-fix [class*="pageContent"]::-webkit-scrollbar-corner {' +
+    'background: transparent;' +
+    '}';
   document.documentElement.appendChild(scrollFixStyle);
 
   const safeCall = async (fn) => {
