@@ -214,7 +214,7 @@ function installMacUnifiedTitlebar(windowRef) {
   window.__desktopUnifiedTitlebarInstalled = true;
 
   const STRIP_HEIGHT = 30;
-  const LAYOUT_OFFSET = 20;
+  const LAYOUT_OFFSET = 22;
   const SIDEBAR_SELECTORS = [
     '[data-app-sidebar]',
     '.app-sidebar',
@@ -290,44 +290,13 @@ function installMacUnifiedTitlebar(windowRef) {
   strip.style.display = 'block';
   strip.style.border = '0';
   strip.style.boxShadow = 'none';
+  strip.style.background = 'transparent';
   document.documentElement.appendChild(strip);
-
-  const seamCover = document.createElement('div');
-  seamCover.style.position = 'absolute';
-  seamCover.style.top = '0';
-  seamCover.style.height = '100%';
-  seamCover.style.width = '1px';
-  seamCover.style.left = '0px';
-  seamCover.style.pointerEvents = 'none';
-  seamCover.style.background = '#1f232a';
-  strip.appendChild(seamCover);
-
-  const seamTail = document.createElement('div');
-  seamTail.style.position = 'absolute';
-  seamTail.style.top = STRIP_HEIGHT + 'px';
-  seamTail.style.height = '84px';
-  seamTail.style.width = '2px';
-  seamTail.style.left = '0px';
-  seamTail.style.pointerEvents = 'none';
-  seamTail.style.background = '#1f232a';
-  strip.appendChild(seamTail);
 
   const applyColorsAndWidths = () => {
     const header = document.querySelector('[data-app-header]') || findFirstVisible(HEADER_SELECTORS, 38);
     const sidebar = document.querySelector('[data-app-sidebar]') || findSidebar();
-    const headerColor = getBackground(header, '#f3f4f6');
-    const sidebarColor = getBackground(sidebar, '#1f232a');
-    const sidebarWidth = sidebar ? Math.max(0, Math.round(sidebar.getBoundingClientRect().width)) : 0;
-    const splitX = Math.max(0, sidebarWidth - 1);
-    strip.style.background = 'linear-gradient(to right, ' +
-      sidebarColor + ' 0px, ' +
-      sidebarColor + ' ' + splitX + 'px, ' +
-      headerColor + ' ' + splitX + 'px, ' +
-      headerColor + ' 100%)';
-    seamCover.style.left = splitX + 'px';
-    seamCover.style.background = sidebarColor;
-    seamTail.style.left = Math.max(0, splitX - 1) + 'px';
-    seamTail.style.background = sidebarColor;
+    strip.style.background = 'transparent';
 
     if (header) {
       if (!header.dataset.desktopTitlebarBaseTop) {
