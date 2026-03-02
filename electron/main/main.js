@@ -985,7 +985,10 @@ function installElectronUpdateUiBridge(windowRef) {
   };
 
   const onUpdateButtonClick = async () => {
-    if (!window.desktop) return;
+    if (!window.desktop) {
+      upsertStatusToast('API desktop indisponível neste ambiente.', 'warn', 3200);
+      return;
+    }
     if (lastUpdateState === 'downloaded') {
       const res = await window.desktop.installUpdate();
       if (res?.ok) {
@@ -1008,11 +1011,10 @@ function installElectronUpdateUiBridge(windowRef) {
   };
 
   const ensureVersionBadge = async () => {
-    if (!window.desktop) return;
     const existing = document.getElementById('desktop-electron-version');
     if (existing) return;
     const versionRes = await window.desktop?.getVersion?.();
-    const version = String(versionRes?.version || 'unknown');
+    const version = String(versionRes?.version || 'local');
     const badge = document.createElement('div');
     badge.id = 'desktop-electron-version';
     badge.textContent = 'v.' + version;
@@ -1032,7 +1034,6 @@ function installElectronUpdateUiBridge(windowRef) {
   };
 
   const ensureGlobalUpdateButton = () => {
-    if (!window.desktop) return null;
     if (globalUpdateBtnEl && document.contains(globalUpdateBtnEl)) {
       applyUpdateStateVisual(globalUpdateBtnEl, lastUpdateState);
       return globalUpdateBtnEl;
@@ -1101,6 +1102,39 @@ function installElectronUpdateUiBridge(windowRef) {
       document.querySelector('.userconfig-page .card-header') ||
       null;
     if (!host) {
+      const saveButton = document.querySelector('.userconfig-page button[type="submit"], .userconfig-page .btn-primary');
+      if (saveButton && saveButton.parentElement) {
+        const wrap = document.createElement('div');
+        wrap.style.display = 'flex';
+        wrap.style.justifyContent = 'flex-end';
+        wrap.style.marginBottom = '12px';
+        const inlineBtn = document.createElement('button');
+        inlineBtn.type = 'button';
+        inlineBtn.dataset.desktopElectronUpdateBtn = '1';
+        inlineBtn.style.display = 'inline-flex';
+        inlineBtn.style.alignItems = 'center';
+        inlineBtn.style.gap = '8px';
+        inlineBtn.style.padding = '9px 12px';
+        inlineBtn.style.border = '1px solid rgba(30, 64, 175, 0.22)';
+        inlineBtn.style.borderRadius = '12px';
+        inlineBtn.style.background = '#2563eb';
+        inlineBtn.style.color = '#fff';
+        inlineBtn.style.font = '700 12px/1 "Segoe UI", sans-serif';
+        inlineBtn.style.cursor = 'pointer';
+        inlineBtn.style.boxShadow = '0 8px 18px rgba(37, 99, 235, 0.24)';
+        inlineBtn.innerHTML = '<span class="desktop-update-dot" style="display:inline-block;width:8px;height:8px;border-radius:999px;background:#bfdbfe"></span><span>Verificar atualizações</span>';
+        inlineBtn.addEventListener('click', (event) => {
+          event.preventDefault();
+          event.stopPropagation();
+          onUpdateButtonClick();
+        }, true);
+        applyUpdateStateVisual(inlineBtn, lastUpdateState);
+        inlineBtn.setAttribute('title', lastUpdateMessage || 'Verificar atualizações');
+        wrap.appendChild(inlineBtn);
+        saveButton.parentElement.prepend(wrap);
+        return inlineBtn;
+      }
+
       const floatingExisting = document.querySelector('[data-desktop-electron-update-floating="1"]');
       if (floatingExisting) return floatingExisting;
       const floating = document.createElement('button');
