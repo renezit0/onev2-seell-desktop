@@ -214,7 +214,7 @@ function installMacUnifiedTitlebar(windowRef) {
   window.__desktopUnifiedTitlebarInstalled = true;
 
   const STRIP_HEIGHT = 30;
-  const LAYOUT_OFFSET = 22;
+  const LAYOUT_OFFSET = 20;
   const SIDEBAR_SELECTORS = [
     '[data-app-sidebar]',
     '.app-sidebar',
@@ -336,6 +336,10 @@ function installMacUnifiedTitlebar(windowRef) {
       }
       const baseTop = Number.parseFloat(header.dataset.desktopTitlebarBaseTop || '0') || 0;
       header.style.setProperty('top', (baseTop + LAYOUT_OFFSET) + 'px', 'important');
+      header.style.setProperty('overflow', 'visible', 'important');
+      if (header.firstElementChild instanceof HTMLElement) {
+        header.firstElementChild.style.setProperty('overflow', 'visible', 'important');
+      }
     }
 
     if (sidebar) {
