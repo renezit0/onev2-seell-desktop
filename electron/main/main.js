@@ -1070,8 +1070,66 @@ function installElectronUpdateUiBridge(windowRef) {
   windowRef.webContents.on('did-finish-load', inject);
 }
 
+function installDesktopInteractionGuards(windowRef) {
+  const script = `
+(() => {
+  if (window.__desktopInteractionGuardsInstalled) return;
+  window.__desktopInteractionGuardsInstalled = true;
+
+  const isImageNode = (node) => {
+    if (!(node instanceof Element)) return false;
+    if (node instanceof HTMLImageElement) return true;
+    return !!node.closest('img, [data-no-drag-image="1"]');
+  };
+
+  // Evita arrastar imagens/links com imagem (efeito "app", sem ghost drag).
+  document.addEventListener('dragstart', (event) => {
+    const target = event.target;
+    if (isImageNode(target)) {
+      event.preventDefault();
+      return;
+    }
+    const el = target instanceof Element ? target : null;
+    const linkWithImage = el?.closest?.('a')?.querySelector?.('img');
+    if (linkWithImage) {
+      event.preventDefault();
+    }
+  }, true);
+
+  // Bloqueia drag/drop de arquivos na janela para evitar navegação acidental.
+  document.addEventListener('dragover', (event) => {
+    if (event.dataTransfer?.types?.includes?.('Files')) event.preventDefault();
+  }, true);
+  document.addEventListener('drop', (event) => {
+    if (event.dataTransfer?.types?.includes?.('Files')) event.preventDefault();
+  }, true);
+
+  const markImagesNotDraggable = () => {
+    document.querySelectorAll('img').forEach((img) => {
+      img.setAttribute('draggable', 'false');
+      img.style.userSelect = 'none';
+      img.style.webkitUserDrag = 'none';
+    });
+  };
+
+  markImagesNotDraggable();
+  const mo = new MutationObserver(markImagesNotDraggable);
+  mo.observe(document.documentElement, { childList: true, subtree: true });
+})();
+`;
+
+  const inject = () => {
+    if (windowRef.isDestroyed()) return;
+    windowRef.webContents.executeJavaScript(script).catch(() => {});
+  };
+
+  windowRef.webContents.on('dom-ready', inject);
+  windowRef.webContents.on('did-finish-load', inject);
+}
+
 async function createWindow() {
   const isMac = process.platform === 'darwin';
+  const isProduction = app.isPackaged;
   let rendererEntryForNav = '';
   mainWindow = new BrowserWindow({
     width: 1280,
@@ -1088,6 +1146,7 @@ async function createWindow() {
       contextIsolation: true,
       nodeIntegration: false,
       sandbox: true,
+      devTools: !isProduction,
       // Mantido alinhado ao app legado (prevenda2), evitando bloqueio CORS do app://local para API remota.
       webSecurity: false,
       spellcheck: false
@@ -1116,6 +1175,32 @@ async function createWindow() {
     shell.openExternal(url);
     return { action: 'deny' };
   });
+
+  if (isProduction) {
+    mainWindow.webContents.on('before-input-event', (event, input) => {
+      const key = String(input.key || '').toLowerCase();
+      const ctrlOrCmd = !!(input.control || input.meta);
+      const shift = !!input.shift;
+      const alt = !!input.alt;
+      const isF12 = key === 'f12';
+      const isCtrlShiftI = ctrlOrCmd && shift && key === 'i';
+      const isCtrlShiftJ = ctrlOrCmd && shift && key === 'j';
+      const isCtrlShiftC = ctrlOrCmd && shift && key === 'c';
+      const isCtrlU = ctrlOrCmd && key === 'u';
+      const isMacInspector = input.meta && alt && key === 'i';
+      if (isF12 || isCtrlShiftI || isCtrlShiftJ || isCtrlShiftC || isCtrlU || isMacInspector) {
+        event.preventDefault();
+      }
+    });
+
+    mainWindow.webContents.on('context-menu', (event) => {
+      event.preventDefault();
+    });
+
+    mainWindow.webContents.on('devtools-opened', () => {
+      mainWindow?.webContents.closeDevTools();
+    });
+  }
 
   mainWindow.webContents.on('will-navigate', (event, url) => {
     if (!rendererEntryForNav.startsWith('http')) return;
@@ -1160,6 +1245,7 @@ async function createWindow() {
   installMacUnifiedTitlebar(mainWindow);
   installWindowsCustomTitlebar(mainWindow);
   installElectronUpdateUiBridge(mainWindow);
+  installDesktopInteractionGuards(mainWindow);
 }
 
 function registerIpc() {
