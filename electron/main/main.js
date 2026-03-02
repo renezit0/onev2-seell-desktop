@@ -464,9 +464,9 @@ function installWindowsCustomTitlebar(windowRef) {
 
   const controls = document.createElement('div');
   controls.style.display = 'flex';
-  controls.style.alignItems = 'center';
+  controls.style.alignItems = 'flex-start';
   controls.style.gap = '10px';
-  controls.style.padding = '0 14px 0 8px';
+  controls.style.padding = '6px 14px 0 8px';
   controls.style.webkitAppRegion = 'no-drag';
   controls.style.pointerEvents = 'auto';
 
@@ -548,10 +548,10 @@ function installWindowsCustomTitlebar(windowRef) {
     const sidebarColor = getColor(sidebar, '#1f232a');
     const headerColor = getColor(header, '#f8fafc');
     const sidebarWidth = sidebar ? Math.max(0, Math.round(sidebar.getBoundingClientRect().width)) : 0;
-    const splitX = Math.max(0, sidebarWidth + 1);
+    const splitX = Math.max(0, sidebarWidth);
     bar.style.background = \`linear-gradient(to right, \${sidebarColor} 0px, \${sidebarColor} \${splitX}px, \${headerColor} \${splitX}px, \${headerColor} 100%)\`;
     seamCover.style.left = Math.max(0, splitX - 1) + 'px';
-    seamCover.style.width = '3px';
+    seamCover.style.width = '2px';
     seamCover.style.background = sidebarColor;
 
     if (header) {
@@ -730,13 +730,16 @@ function installElectronUpdateUiBridge(windowRef) {
   };
 
   const patchElectronSettingsButton = () => {
-    const hosts = Array.from(document.querySelectorAll('section, article, div, form, [role="dialog"]'));
-    const host = hosts.find((el) => {
-      if (!el || el.dataset.desktopElectronUpdateHost === '1') return false;
-      const txt = normalize(el.textContent);
-      if (!txt || txt.length < 20 || txt.length > 1800) return false;
-      return txt.includes('configuracoes electron') || txt.includes('configuracao electron') || (txt.includes('electron') && txt.includes('configur'));
-    });
+    const pathInfo = normalize(window.location.pathname || '');
+    const hashInfo = normalize(window.location.hash || '');
+    const inUserConfigRoute = pathInfo.includes('userconfig') || hashInfo.includes('userconfig');
+    if (!inUserConfigRoute) return null;
+
+    const host =
+      document.querySelector('.userconfig-page .header-actions') ||
+      document.querySelector('.userconfig-page .card-header .header-actions') ||
+      document.querySelector('.userconfig-page .card-header') ||
+      null;
     if (!host) return null;
 
     host.dataset.desktopElectronUpdateHost = '1';
@@ -747,8 +750,9 @@ function installElectronUpdateUiBridge(windowRef) {
     const wrapper = document.createElement('div');
     wrapper.style.display = 'flex';
     wrapper.style.justifyContent = 'flex-end';
-    wrapper.style.marginTop = '10px';
-    wrapper.style.width = '100%';
+    wrapper.style.marginTop = '0';
+    wrapper.style.marginLeft = '10px';
+    wrapper.style.width = 'auto';
 
     const button = document.createElement('button');
     button.type = 'button';
