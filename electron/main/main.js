@@ -408,7 +408,7 @@ function installWindowsCustomTitlebar(windowRef) {
 
   const BAR_HEIGHT = 44;
   const HEADER_LAYOUT_OFFSET = 36;
-  const SIDEBAR_LAYOUT_OFFSET = 24;
+  const SIDEBAR_LAYOUT_OFFSET = 26;
   const CONTENT_LAYOUT_OFFSET = 36;
   const SIDEBAR_SELECTORS = ['[data-app-sidebar]', '.app-sidebar', '.sidebar', 'aside[class*="sidebar"]', 'nav[class*="sidebar"]'];
   const HEADER_SELECTORS = ['[data-app-header]', '.app-header', '.header', '.topbar', 'header[class*="header"]', 'header'];
@@ -764,6 +764,14 @@ function installElectronUpdateUiBridge(windowRef) {
       .replace(/\\s+/g, ' ')
       .trim();
 
+  const ensureToastOffsetStyle = () => {
+    if (document.getElementById('desktop-toast-offset-style')) return;
+    const style = document.createElement('style');
+    style.id = 'desktop-toast-offset-style';
+    style.textContent = '#toastContainer{top:96px !important;}';
+    document.documentElement.appendChild(style);
+  };
+
   const showBubble = (message, type = 'info') => {
     const toastType = type === 'warn' ? 'warning' : (type || 'info');
     const toastTitle =
@@ -835,7 +843,7 @@ function installElectronUpdateUiBridge(windowRef) {
         '<div class="toast-title">Atualização em andamento</div>' +
         '<div class="toast-message">Baixando atualização...</div>' +
         '<div class="desktop-update-progress" style="margin-top:8px;height:6px;border-radius:999px;background:rgba(148,163,184,.25);overflow:hidden;">' +
-        '<div class="desktop-update-progress-bar" style="height:100%;width:0%;background:linear-gradient(90deg,#3b82f6,#10b981);transition:width .2s ease;"></div>' +
+        '<div class="desktop-update-progress-bar" style="height:100%;width:0%;background:linear-gradient(90deg,#bbf7d0,#86efac);transition:width .2s ease;"></div>' +
         '</div>' +
         '</div>' +
         '<button type="button" class="toast-close" aria-label="Fechar"><i class="fas fa-times"></i></button>';
@@ -1057,6 +1065,7 @@ function installElectronUpdateUiBridge(windowRef) {
   });
 
   retryPatch();
+  ensureToastOffsetStyle();
   ensureVersionBadge().catch(() => {});
 })();
 `;
