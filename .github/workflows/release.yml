@@ -13,6 +13,12 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Checkout onev2react frontend
+        uses: actions/checkout@v4
+        with:
+          repository: renezit0/onev2react
+          path: onev2react-src
+
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
@@ -37,6 +43,7 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GH_TOKEN }}
           CSC_IDENTITY_AUTO_DISCOVERY: false
+          ONEV2_FRONTEND_PATH: ${{ github.workspace }}/onev2react-src/frontend
         run: npm run release:win
 
       - name: Ensure GitHub Release for tag

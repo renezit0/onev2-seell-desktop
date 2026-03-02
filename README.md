@@ -32,6 +32,9 @@ O comando gera os assets esperados em `release/`:
 - `latest.yml`
 - `*.blockmap`
 
+No CI, o build usa o frontend real do repositório `onev2react` e empacota esse `dist` no desktop.
+Fallback local: se o frontend real não for encontrado, usa o renderer base.
+
 Fluxo em produção:
 1. Usuário instala via `onev2-seell-desktop-SETUP.exe`.
 2. Instalação padrão per-user em `%LocalAppData%\\Programs\\oneV2 seeLL`.
