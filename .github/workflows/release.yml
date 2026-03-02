@@ -17,6 +17,7 @@ jobs:
         uses: actions/checkout@v4
         with:
           repository: renezit0/onev2react
+          ref: codex/electron-base-release
           path: onev2react-src
           token: ${{ secrets.GH_TOKEN }}
 
