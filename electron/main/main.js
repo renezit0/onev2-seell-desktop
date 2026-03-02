@@ -755,6 +755,8 @@ function installElectronUpdateUiBridge(windowRef) {
   let lastUpdateState = 'idle';
   let lastUpdateMessage = 'Pronto';
   let downloadToastEl = null;
+  let statusToastEl = null;
+  let statusToastCloseTimer = null;
 
   const normalize = (value) =>
     String(value || '')
@@ -822,6 +824,67 @@ function installElectronUpdateUiBridge(windowRef) {
     setTimeout(close, 3600);
   };
 
+  const closeStatusToast = () => {
+    if (statusToastCloseTimer) {
+      clearTimeout(statusToastCloseTimer);
+      statusToastCloseTimer = null;
+    }
+    if (!statusToastEl) return;
+    statusToastEl.remove();
+    statusToastEl = null;
+  };
+
+  const upsertStatusToast = (message, type = 'info', autoCloseMs = 0) => {
+    const toastType = type === 'warn' ? 'warning' : (type || 'info');
+    const toastTitle =
+      toastType === 'success' ? 'Sucesso!' :
+      toastType === 'error' ? 'Atenção!' :
+      toastType === 'warning' ? 'Atenção!' : 'Informação';
+    const toastIcon =
+      toastType === 'success' ? 'fa-check-circle' :
+      toastType === 'error' ? 'fa-times-circle' :
+      toastType === 'warning' ? 'fa-exclamation-triangle' : 'fa-info-circle';
+
+    const container = document.getElementById('toastContainer');
+    if (!container) return;
+
+    if (!statusToastEl || !document.contains(statusToastEl)) {
+      statusToastEl = document.createElement('div');
+      statusToastEl.className = 'toast ' + toastType;
+      statusToastEl.setAttribute('role', 'alert');
+      statusToastEl.setAttribute('aria-live', 'polite');
+      statusToastEl.innerHTML =
+        '<div class="toast-icon"><i class="fas ' + toastIcon + '"></i></div>' +
+        '<div class="toast-content">' +
+        '<div class="toast-title">' + toastTitle + '</div>' +
+        '<div class="toast-message"></div>' +
+        '</div>' +
+        '<button type="button" class="toast-close" aria-label="Fechar"><i class="fas fa-times"></i></button>';
+      const closeBtn = statusToastEl.querySelector('.toast-close');
+      closeBtn?.addEventListener('click', closeStatusToast);
+      container.appendChild(statusToastEl);
+    } else {
+      statusToastEl.className = 'toast ' + toastType;
+      const iconEl = statusToastEl.querySelector('.toast-icon i');
+      if (iconEl) iconEl.className = 'fas ' + toastIcon;
+      const titleEl = statusToastEl.querySelector('.toast-title');
+      if (titleEl) titleEl.textContent = toastTitle;
+    }
+
+    const messageEl = statusToastEl.querySelector('.toast-message');
+    if (messageEl) messageEl.textContent = String(message || '');
+
+    if (statusToastCloseTimer) {
+      clearTimeout(statusToastCloseTimer);
+      statusToastCloseTimer = null;
+    }
+    if (autoCloseMs > 0) {
+      statusToastCloseTimer = setTimeout(() => {
+        closeStatusToast();
+      }, autoCloseMs);
+    }
+  };
+
   const closeDownloadToast = () => {
     if (!downloadToastEl) return;
     downloadToastEl.remove();
@@ -874,21 +937,21 @@ function installElectronUpdateUiBridge(windowRef) {
     if (lastUpdateState === 'downloaded') {
       const res = await window.desktop.installUpdate();
       if (res?.ok) {
-        showBubble('Instalando atualização e reiniciando...', 'success');
+        upsertStatusToast('Instalando atualização e reiniciando...', 'success');
       } else {
-        showBubble('Não foi possível instalar agora.', 'error');
+        upsertStatusToast('Não foi possível instalar agora.', 'error');
       }
       return;
     }
 
-    showBubble('Verificando atualização...', 'info');
+    upsertStatusToast('Verificando atualização...', 'info');
     const result = await window.desktop.checkForUpdates();
     if (result?.skipped) {
-      showBubble('Atualização disponível apenas no app instalado.', 'warn');
+      upsertStatusToast('Atualização disponível apenas no app instalado.', 'warn', 3400);
       return;
     }
     if (!result?.ok) {
-      showBubble('Falha ao verificar atualização.', 'error');
+      upsertStatusToast('Falha ao verificar atualização.', 'error', 4200);
     }
   };
 
@@ -1036,6 +1099,7 @@ function installElectronUpdateUiBridge(windowRef) {
 
     if (state === 'downloading') {
       const percent = Math.max(0, Math.min(100, Number(payload?.progress?.percent || 0)));
+      closeStatusToast();
       upsertDownloadToast(percent);
       toastState.lastState = state;
       return;
@@ -1046,11 +1110,11 @@ function installElectronUpdateUiBridge(windowRef) {
     if (toastState.lastState === state) return;
     toastState.lastState = state;
 
-    if (state === 'checking') showBubble('Verificando atualização do aplicativo...', 'info');
-    if (state === 'available') showBubble('Nova versão encontrada. Download iniciado.', 'warn');
-    if (state === 'not-available') showBubble('Aplicativo já está atualizado.', 'success');
-    if (state === 'downloaded') showBubble('Atualização pronta. Clique para instalar e reiniciar.', 'success');
-    if (state === 'error') showBubble(lastUpdateMessage || 'Falha ao atualizar o aplicativo.', 'error');
+    if (state === 'checking') upsertStatusToast('Verificando atualização do aplicativo...', 'info');
+    if (state === 'available') upsertStatusToast('Nova versão encontrada. Download iniciado.', 'warn', 2600);
+    if (state === 'not-available') upsertStatusToast('Aplicativo já está atualizado.', 'success', 3200);
+    if (state === 'downloaded') upsertStatusToast('Atualização pronta. Clique para instalar e reiniciar.', 'success', 4200);
+    if (state === 'error') upsertStatusToast(lastUpdateMessage || 'Falha ao atualizar o aplicativo.', 'error', 4200);
   });
 
   const mo = new MutationObserver(() => retryPatch());
