@@ -407,9 +407,9 @@ function installWindowsCustomTitlebar(windowRef) {
   window.__desktopWindowsTitlebarInstalled = true;
 
   const BAR_HEIGHT = 44;
-  const HEADER_LAYOUT_OFFSET = 40;
-  const SIDEBAR_LAYOUT_OFFSET = 28;
-  const CONTENT_LAYOUT_OFFSET = 40;
+  const HEADER_LAYOUT_OFFSET = 36;
+  const SIDEBAR_LAYOUT_OFFSET = 18;
+  const CONTENT_LAYOUT_OFFSET = 36;
   const SIDEBAR_SELECTORS = ['[data-app-sidebar]', '.app-sidebar', '.sidebar', 'aside[class*="sidebar"]', 'nav[class*="sidebar"]'];
   const HEADER_SELECTORS = ['[data-app-header]', '.app-header', '.header', '.topbar', 'header[class*="header"]', 'header'];
 
@@ -753,6 +753,7 @@ function installElectronUpdateUiBridge(windowRef) {
 
   let lastUpdateState = 'idle';
   let lastUpdateMessage = 'Pronto';
+  let downloadToastEl = null;
 
   const normalize = (value) =>
     String(value || '')
@@ -810,6 +811,42 @@ function installElectronUpdateUiBridge(windowRef) {
       }
     }
     setTimeout(close, 3600);
+  };
+
+  const closeDownloadToast = () => {
+    if (!downloadToastEl) return;
+    downloadToastEl.remove();
+    downloadToastEl = null;
+  };
+
+  const upsertDownloadToast = (percent) => {
+    const container = document.getElementById('toastContainer');
+    if (!container) return;
+    const safe = Math.max(0, Math.min(100, Number(percent || 0)));
+    if (!downloadToastEl || !document.contains(downloadToastEl)) {
+      downloadToastEl = document.createElement('div');
+      downloadToastEl.className = 'toast info';
+      downloadToastEl.setAttribute('role', 'alert');
+      downloadToastEl.setAttribute('aria-live', 'polite');
+      downloadToastEl.innerHTML =
+        '<div class="toast-icon"><i class="fas fa-download"></i></div>' +
+        '<div class="toast-content">' +
+        '<div class="toast-title">Atualização em andamento</div>' +
+        '<div class="toast-message">Baixando atualização...</div>' +
+        '<div class="desktop-update-progress" style="margin-top:8px;height:6px;border-radius:999px;background:rgba(148,163,184,.25);overflow:hidden;">' +
+        '<div class="desktop-update-progress-bar" style="height:100%;width:0%;background:linear-gradient(90deg,#3b82f6,#10b981);transition:width .2s ease;"></div>' +
+        '</div>' +
+        '</div>' +
+        '<button type="button" class="toast-close" aria-label="Fechar"><i class="fas fa-times"></i></button>';
+      const closeBtn = downloadToastEl.querySelector('.toast-close');
+      closeBtn?.addEventListener('click', closeDownloadToast);
+      container.appendChild(downloadToastEl);
+    }
+
+    const msgEl = downloadToastEl.querySelector('.toast-message');
+    if (msgEl) msgEl.textContent = 'Baixando atualização: ' + Math.round(safe) + '%';
+    const barEl = downloadToastEl.querySelector('.desktop-update-progress-bar');
+    if (barEl) barEl.style.width = Math.round(safe) + '%';
   };
 
   const applyUpdateStateVisual = (button, state) => {
@@ -983,25 +1020,22 @@ function installElectronUpdateUiBridge(windowRef) {
 
     // Toasts claros no topo para status de atualização.
     if (!window.__desktopUpdateToastState) {
-      window.__desktopUpdateToastState = { lastState: '', downloadBucket: -1 };
+      window.__desktopUpdateToastState = { lastState: '' };
     }
     const toastState = window.__desktopUpdateToastState;
     const state = lastUpdateState;
 
     if (state === 'downloading') {
       const percent = Math.max(0, Math.min(100, Number(payload?.progress?.percent || 0)));
-      const bucket = Math.floor(percent / 25);
-      if (bucket !== toastState.downloadBucket) {
-        toastState.downloadBucket = bucket;
-        showBubble(\`Atualização em andamento: \${Math.round(percent)}%\`, 'info');
-      }
+      upsertDownloadToast(percent);
       toastState.lastState = state;
       return;
     }
 
+    closeDownloadToast();
+
     if (toastState.lastState === state) return;
     toastState.lastState = state;
-    toastState.downloadBucket = -1;
 
     if (state === 'checking') showBubble('Verificando atualização do aplicativo...', 'info');
     if (state === 'available') showBubble('Nova versão encontrada. Download iniciado.', 'warn');
