@@ -191,7 +191,7 @@ async function ensureRendererServer() {
     res.end(body);
   });
 
-  const preferredPort = Number.parseInt(process.env.ONEV2_DESKTOP_PORT || '5175', 10);
+  const preferredPort = Number.parseInt(process.env.ONEV2_DESKTOP_PORT || '5174', 10);
   const candidatePorts = [];
   if (Number.isFinite(preferredPort) && preferredPort > 0) {
     for (let i = 0; i <= 20; i += 1) {
