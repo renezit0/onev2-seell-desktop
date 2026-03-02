@@ -1,5 +1,6 @@
 const path = require('path');
 const fs = require('fs');
+const http = require('http');
 const { app, BrowserWindow, ipcMain, shell } = require('electron');
 const { autoUpdater } = require('electron-updater');
 const { CHANNELS, validateConfigSet } = require('../shared/ipc');
@@ -7,6 +8,8 @@ const { CHANNELS, validateConfigSet } = require('../shared/ipc');
 let mainWindow;
 let autoUpdateTimer = null;
 let hasDownloadedUpdate = false;
+let rendererServer = null;
+let rendererServerUrl = null;
 
 if (process.platform === 'win32') {
   app.disableHardwareAcceleration();
@@ -48,13 +51,120 @@ function sendToRenderer(channel, payload) {
   mainWindow.webContents.send(channel, payload);
 }
 
-function getRendererEntry() {
+function getRendererDistPath() {
+  return path.join(__dirname, '../../renderer/dist');
+}
+
+function resolveStaticFilePath(rootDir, requestPath) {
+  const safeRelative = requestPath.replace(/^\/+/, '');
+  const absolutePath = path.resolve(rootDir, safeRelative);
+  const normalizedRoot = `${path.resolve(rootDir)}${path.sep}`;
+  if (absolutePath !== path.resolve(rootDir) && !absolutePath.startsWith(normalizedRoot)) {
+    return null;
+  }
+  return absolutePath;
+}
+
+function getContentType(filePath) {
+  const ext = path.extname(filePath).toLowerCase();
+  const byExt = {
+    '.html': 'text/html; charset=utf-8',
+    '.js': 'text/javascript; charset=utf-8',
+    '.css': 'text/css; charset=utf-8',
+    '.json': 'application/json; charset=utf-8',
+    '.svg': 'image/svg+xml',
+    '.png': 'image/png',
+    '.jpg': 'image/jpeg',
+    '.jpeg': 'image/jpeg',
+    '.ico': 'image/x-icon',
+    '.webmanifest': 'application/manifest+json; charset=utf-8',
+    '.woff': 'font/woff',
+    '.woff2': 'font/woff2',
+    '.ttf': 'font/ttf',
+    '.map': 'application/json; charset=utf-8'
+  };
+  return byExt[ext] || 'application/octet-stream';
+}
+
+function readFileOrNull(filePath) {
+  try {
+    return fs.readFileSync(filePath);
+  } catch {
+    return null;
+  }
+}
+
+async function ensureRendererServer() {
+  if (rendererServer && rendererServerUrl) return rendererServerUrl;
+
+  const rootDir = getRendererDistPath();
+  if (!fs.existsSync(path.join(rootDir, 'index.html'))) {
+    throw new Error(`renderer/dist/index.html não encontrado em: ${rootDir}`);
+  }
+
+  rendererServer = http.createServer((req, res) => {
+    const reqUrl = new URL(req.url || '/', 'http://127.0.0.1');
+    let pathname = decodeURIComponent(reqUrl.pathname || '/');
+    if (pathname === '/') pathname = '/index.html';
+
+    let targetPath = resolveStaticFilePath(rootDir, pathname);
+    if (!targetPath) {
+      res.writeHead(403, { 'Content-Type': 'text/plain; charset=utf-8' });
+      res.end('Forbidden');
+      return;
+    }
+
+    try {
+      const stat = fs.existsSync(targetPath) ? fs.statSync(targetPath) : null;
+      if (stat && stat.isDirectory()) {
+        targetPath = path.join(targetPath, 'index.html');
+      }
+    } catch {
+      // fallback SPA abaixo
+    }
+
+    let body = readFileOrNull(targetPath);
+    if (!body) {
+      body = readFileOrNull(path.join(rootDir, 'index.html'));
+      targetPath = path.join(rootDir, 'index.html');
+      if (!body) {
+        res.writeHead(500, { 'Content-Type': 'text/plain; charset=utf-8' });
+        res.end('index.html não encontrado');
+        return;
+      }
+    }
+
+    res.writeHead(200, {
+      'Content-Type': getContentType(targetPath),
+      'Cache-Control': 'no-cache'
+    });
+    res.end(body);
+  });
+
+  await new Promise((resolve, reject) => {
+    rendererServer.once('error', reject);
+    rendererServer.listen(0, '127.0.0.1', () => {
+      const address = rendererServer.address();
+      const port = typeof address === 'object' && address ? address.port : null;
+      if (!port) {
+        reject(new Error('Falha ao descobrir porta do servidor local do renderer.'));
+        return;
+      }
+      rendererServerUrl = `http://127.0.0.1:${port}`;
+      resolve();
+    });
+  });
+
+  return rendererServerUrl;
+}
+
+async function resolveRendererEntry() {
   if (process.env.VITE_DEV_SERVER_URL) {
     return process.env.VITE_DEV_SERVER_URL;
   }
   // Override opcional para apontar para URL remota (apenas quando necessário).
   if (process.env.ONEV2_APP_URL) return process.env.ONEV2_APP_URL;
-  return path.join(__dirname, '../../renderer/dist/index.html');
+  return ensureRendererServer();
 }
 
 function installMacUnifiedTitlebar(windowRef) {
@@ -618,8 +728,9 @@ function installElectronUpdateUiBridge(windowRef) {
   windowRef.webContents.on('did-finish-load', inject);
 }
 
-function createWindow() {
+async function createWindow() {
   const isMac = process.platform === 'darwin';
+  let rendererEntryForNav = '';
   mainWindow = new BrowserWindow({
     width: 1280,
     height: 820,
@@ -664,9 +775,8 @@ function createWindow() {
   });
 
   mainWindow.webContents.on('will-navigate', (event, url) => {
-    const entry = getRendererEntry();
-    if (!entry.startsWith('http')) return;
-    const allowedOrigin = new URL(entry).origin;
+    if (!rendererEntryForNav.startsWith('http')) return;
+    const allowedOrigin = new URL(rendererEntryForNav).origin;
     if (!String(url || '').startsWith(allowedOrigin)) {
       event.preventDefault();
       shell.openExternal(url);
@@ -696,7 +806,8 @@ function createWindow() {
     mainWindow.webContents.loadURL(`data:text/html;charset=utf-8,${encodeURIComponent(html)}`).catch(() => {});
   });
 
-  const entry = getRendererEntry();
+  const entry = await resolveRendererEntry();
+  rendererEntryForNav = entry;
   if (entry.startsWith('http')) {
     mainWindow.loadURL(entry);
   } else {
@@ -842,13 +953,13 @@ function setupAutoUpdater() {
   }, 60 * 60 * 1000);
 }
 
-app.whenReady().then(() => {
-  createWindow();
+app.whenReady().then(async () => {
+  await createWindow();
   registerIpc();
   setupAutoUpdater();
 
   app.on('activate', () => {
-    if (BrowserWindow.getAllWindows().length === 0) createWindow();
+    if (BrowserWindow.getAllWindows().length === 0) createWindow().catch(() => {});
   });
 });
 
@@ -857,6 +968,13 @@ app.on('window-all-closed', () => {
 });
 
 app.on('before-quit', () => {
+  if (rendererServer) {
+    try {
+      rendererServer.close();
+    } catch {}
+    rendererServer = null;
+    rendererServerUrl = null;
+  }
   if (autoUpdateTimer) {
     clearInterval(autoUpdateTimer);
     autoUpdateTimer = null;
