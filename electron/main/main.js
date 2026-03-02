@@ -1402,6 +1402,81 @@ function installElectronUpdateUiBridge(windowRef) {
   windowRef.webContents.on('did-finish-load', inject);
 }
 
+function installFailSafeUpdateControls(windowRef) {
+  const script = `
+(() => {
+  if (window.__desktopFailSafeControlsInstalled) return;
+  window.__desktopFailSafeControlsInstalled = true;
+
+  const ensure = async () => {
+    try {
+      let badge = document.getElementById('desktop-failsafe-version');
+      if (!badge) {
+        badge = document.createElement('div');
+        badge.id = 'desktop-failsafe-version';
+        badge.style.position = 'fixed';
+        badge.style.right = '18px';
+        badge.style.bottom = '14px';
+        badge.style.zIndex = '2147483647';
+        badge.style.pointerEvents = 'none';
+        badge.style.font = '700 10px/1 "Segoe UI", sans-serif';
+        badge.style.color = 'rgba(71, 85, 105, 0.95)';
+        badge.style.background = 'rgba(255,255,255,0.92)';
+        badge.style.border = '1px solid rgba(148,163,184,.35)';
+        badge.style.borderRadius = '999px';
+        badge.style.padding = '3px 6px';
+        document.body.appendChild(badge);
+      }
+      const versionRes = await window.desktop?.getVersion?.();
+      const version = String(versionRes?.version || 'local');
+      badge.textContent = 'v.' + version;
+
+      let btn = document.getElementById('desktop-failsafe-update');
+      if (!btn) {
+        btn = document.createElement('button');
+        btn.id = 'desktop-failsafe-update';
+        btn.type = 'button';
+        btn.style.position = 'fixed';
+        btn.style.right = '18px';
+        btn.style.bottom = '42px';
+        btn.style.zIndex = '2147483647';
+        btn.style.display = 'inline-flex';
+        btn.style.alignItems = 'center';
+        btn.style.gap = '8px';
+        btn.style.padding = '8px 11px';
+        btn.style.border = '1px solid rgba(30,64,175,.22)';
+        btn.style.borderRadius = '10px';
+        btn.style.background = '#2563eb';
+        btn.style.color = '#fff';
+        btn.style.font = '700 12px/1 "Segoe UI", sans-serif';
+        btn.style.cursor = 'pointer';
+        btn.style.boxShadow = '0 8px 18px rgba(37,99,235,.24)';
+        btn.innerHTML = '<span style="display:inline-block;width:8px;height:8px;border-radius:999px;background:#bfdbfe;"></span><span>Atualizações</span>';
+        btn.addEventListener('click', async (event) => {
+          event.preventDefault();
+          event.stopPropagation();
+          if (!window.desktop) return;
+          await window.desktop.checkForUpdates();
+        }, true);
+        document.body.appendChild(btn);
+      }
+    } catch {}
+  };
+
+  ensure();
+  setInterval(ensure, 2500);
+})();
+`;
+
+  const inject = () => {
+    if (windowRef.isDestroyed()) return;
+    windowRef.webContents.executeJavaScript(script).catch(() => {});
+  };
+
+  windowRef.webContents.on('dom-ready', inject);
+  windowRef.webContents.on('did-finish-load', inject);
+}
+
 function installDesktopInteractionGuards(windowRef) {
   const script = `
 (() => {
@@ -1577,6 +1652,7 @@ async function createWindow() {
   installMacUnifiedTitlebar(mainWindow);
   installWindowsCustomTitlebar(mainWindow);
   installElectronUpdateUiBridge(mainWindow);
+  installFailSafeUpdateControls(mainWindow);
   installDesktopInteractionGuards(mainWindow);
 }
 
