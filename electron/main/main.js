@@ -104,6 +104,7 @@ function setHeader(headers, name, value) {
 
 function installDesktopCorsBridge() {
   const rawOrigins = process.env.ONEV2_CORS_API_ORIGINS || 'https://api.seellbr.com';
+  const desktopOrigin = process.env.ONEV2_DESKTOP_REQUEST_ORIGIN || 'http://localhost:5174';
   const origins = rawOrigins
     .split(',')
     .map((item) => item.trim())
@@ -121,6 +122,23 @@ function installDesktopCorsBridge() {
   if (!urls.length) return;
 
   const filter = { urls };
+  session.defaultSession.webRequest.onBeforeSendHeaders(filter, (details, callback) => {
+    const requestHeaders = { ...(details.requestHeaders || {}) };
+    const currentOrigin = requestHeaders.Origin || requestHeaders.origin || '';
+
+    const isAppSchemeOrigin =
+      !currentOrigin ||
+      currentOrigin === 'null' ||
+      currentOrigin.startsWith('app://');
+
+    if (isAppSchemeOrigin) {
+      requestHeaders.Origin = desktopOrigin;
+      requestHeaders.Referer = `${desktopOrigin.replace(/\/$/, '')}/`;
+    }
+
+    callback({ requestHeaders });
+  });
+
   session.defaultSession.webRequest.onHeadersReceived(filter, (details, callback) => {
     const requestOrigin =
       details.requestHeaders?.Origin ||
