@@ -750,7 +750,6 @@ function installElectronUpdateUiBridge(windowRef) {
 (() => {
   if (window.__desktopUpdateUiBridgeInstalled) return;
   window.__desktopUpdateUiBridgeInstalled = true;
-  if (!window.desktop) return;
 
   let lastUpdateState = 'idle';
   let lastUpdateMessage = 'Pronto';
@@ -985,6 +984,7 @@ function installElectronUpdateUiBridge(windowRef) {
   };
 
   const onUpdateButtonClick = async () => {
+    if (!window.desktop) return;
     if (lastUpdateState === 'downloaded') {
       const res = await window.desktop.installUpdate();
       if (res?.ok) {
@@ -1007,6 +1007,7 @@ function installElectronUpdateUiBridge(windowRef) {
   };
 
   const ensureVersionBadge = async () => {
+    if (!window.desktop) return;
     const existing = document.getElementById('desktop-electron-version');
     if (existing) return;
     const versionRes = await window.desktop?.getVersion?.();
@@ -1062,7 +1063,38 @@ function installElectronUpdateUiBridge(windowRef) {
       document.querySelector('.userconfig-page .card-header .header-actions') ||
       document.querySelector('.userconfig-page .card-header') ||
       null;
-    if (!host) return null;
+    if (!host) {
+      const floatingExisting = document.querySelector('[data-desktop-electron-update-floating="1"]');
+      if (floatingExisting) return floatingExisting;
+      const floating = document.createElement('button');
+      floating.type = 'button';
+      floating.dataset.desktopElectronUpdateFloating = '1';
+      floating.style.position = 'fixed';
+      floating.style.right = '14px';
+      floating.style.bottom = '38px';
+      floating.style.zIndex = '2147483646';
+      floating.style.display = 'inline-flex';
+      floating.style.alignItems = 'center';
+      floating.style.gap = '8px';
+      floating.style.padding = '9px 12px';
+      floating.style.border = '1px solid rgba(30, 64, 175, 0.22)';
+      floating.style.borderRadius = '12px';
+      floating.style.background = '#2563eb';
+      floating.style.color = '#fff';
+      floating.style.font = '700 12px/1 "Segoe UI", sans-serif';
+      floating.style.cursor = 'pointer';
+      floating.style.boxShadow = '0 8px 18px rgba(37, 99, 235, 0.24)';
+      floating.innerHTML = '<span class="desktop-update-dot" style="display:inline-block;width:8px;height:8px;border-radius:999px;background:#bfdbfe"></span><span>Atualizações</span>';
+      floating.addEventListener('click', (event) => {
+        event.preventDefault();
+        event.stopPropagation();
+        onUpdateButtonClick();
+      }, true);
+      applyUpdateStateVisual(floating, lastUpdateState);
+      floating.setAttribute('title', lastUpdateMessage || 'Verificar atualizações');
+      document.body.appendChild(floating);
+      return floating;
+    }
 
     host.dataset.desktopElectronUpdateHost = '1';
 
@@ -1108,6 +1140,7 @@ function installElectronUpdateUiBridge(windowRef) {
   let patchedButton = patchPwaButton();
   let patchedSettingsButton = patchElectronSettingsButton();
   const retryPatch = () => {
+    if (!window.desktop) return;
     if (!patchedButton || !document.contains(patchedButton)) {
       patchedButton = patchPwaButton();
     }
@@ -1116,7 +1149,10 @@ function installElectronUpdateUiBridge(windowRef) {
     }
   };
 
-  const unlisten = window.desktop.onUpdateStatus((payload) => {
+  let unlisten = null;
+  const ensureUpdateListener = () => {
+    if (!window.desktop || unlisten) return;
+    unlisten = window.desktop.onUpdateStatus((payload) => {
     lastUpdateState = String(payload?.state || 'idle');
     lastUpdateMessage = String(payload?.message || '');
     if (patchedButton) {
@@ -1170,7 +1206,8 @@ function installElectronUpdateUiBridge(windowRef) {
       showInstallNowToast();
     }
     if (state === 'error') upsertStatusToast(lastUpdateMessage || 'Falha ao atualizar o aplicativo.', 'error', 4200);
-  });
+    });
+  };
 
   const mo = new MutationObserver(() => retryPatch());
   mo.observe(document.documentElement, {
@@ -1183,9 +1220,16 @@ function installElectronUpdateUiBridge(windowRef) {
     mo.disconnect();
   });
 
-  retryPatch();
+  const tick = () => {
+    ensureUpdateListener();
+    retryPatch();
+    ensureVersionBadge().catch(() => {});
+  };
+
+  tick();
+  setTimeout(tick, 800);
+  setTimeout(tick, 1800);
   ensureToastOffsetStyle();
-  ensureVersionBadge().catch(() => {});
 })();
 `;
 
