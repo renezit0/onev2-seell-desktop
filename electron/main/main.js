@@ -541,13 +541,13 @@ function installWindowsCustomTitlebar(windowRef) {
     'background: transparent; border-radius: 999px; border: 2px solid transparent; background-clip: padding-box; min-height: 30px;' +
     '}' +
     'html.desktop-win-layout-fix.desktop-win-scroll-active .desktop-win-scroll-target::-webkit-scrollbar-thumb {' +
-    'background: rgba(51, 65, 85, 0.72); border: 2px solid transparent; background-clip: padding-box;' +
+    'background: rgba(148, 163, 184, 0.62); border: 2px solid transparent; background-clip: padding-box;' +
     '}' +
     'html.desktop-win-layout-fix .desktop-win-scroll-target::-webkit-scrollbar-corner {' +
     'background: transparent;' +
     '}' +
     'html.desktop-win-layout-fix.desktop-win-scroll-active .desktop-win-scroll-target {' +
-    'scrollbar-color: rgba(51, 65, 85, 0.72) transparent;' +
+    'scrollbar-color: rgba(148, 163, 184, 0.62) transparent;' +
     '}';
   document.documentElement.appendChild(scrollFixStyle);
 
@@ -559,7 +559,7 @@ function installWindowsCustomTitlebar(windowRef) {
     if (clearScrollActiveTimer) clearTimeout(clearScrollActiveTimer);
     clearScrollActiveTimer = setTimeout(() => {
       document.documentElement.classList.remove('desktop-win-scroll-active');
-    }, 820);
+    }, 420);
   };
 
   const handlePointerMove = (event) => {
