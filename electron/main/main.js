@@ -519,6 +519,13 @@ function installWindowsCustomTitlebar(windowRef) {
   scrollFixStyle.textContent =
     'html.desktop-win-layout-fix, body.desktop-win-layout-fix {' +
     'scrollbar-gutter: auto !important;' +
+    'overflow-x: hidden !important;' +
+    '}' +
+    'html.desktop-win-layout-fix #root, html.desktop-win-layout-fix .content, html.desktop-win-layout-fix main, html.desktop-win-layout-fix [role="main"], html.desktop-win-layout-fix .pageContent, html.desktop-win-layout-fix [class*="pageContent"] {' +
+    'scrollbar-gutter: auto !important;' +
+    'padding-right: 0 !important;' +
+    'margin-right: 0 !important;' +
+    'overflow-x: hidden !important;' +
     '}' +
     'html.desktop-win-layout-fix *, body.desktop-win-layout-fix * {' +
     'scrollbar-gutter: auto !important;' +
@@ -528,19 +535,23 @@ function installWindowsCustomTitlebar(windowRef) {
     '}' +
     'html.desktop-win-layout-fix * { overscroll-behavior: contain; }' +
     'html.desktop-win-layout-fix ::-webkit-scrollbar {' +
-    'width: 9px; height: 9px;' +
+    'width: 10px; height: 10px;' +
     '}' +
     'html.desktop-win-layout-fix ::-webkit-scrollbar-track {' +
-    'background: transparent;' +
+    'background: transparent; margin: 2px;' +
     '}' +
     'html.desktop-win-layout-fix ::-webkit-scrollbar-thumb {' +
-    'background: rgba(100, 116, 139, 0.45); border-radius: 999px; border: 2px solid transparent; background-clip: padding-box;' +
+    'background: rgba(71, 85, 105, 0.52); border-radius: 999px; border: 2px solid transparent; background-clip: padding-box; min-height: 36px;' +
     '}' +
     'html.desktop-win-layout-fix ::-webkit-scrollbar-thumb:hover {' +
-    'background: rgba(71, 85, 105, 0.68); border: 2px solid transparent; background-clip: padding-box;' +
+    'background: rgba(51, 65, 85, 0.76); border: 2px solid transparent; background-clip: padding-box;' +
     '}' +
     'html.desktop-win-layout-fix ::-webkit-scrollbar-corner {' +
     'background: transparent;' +
+    '}' +
+    'html.desktop-win-layout-fix {' +
+    'scrollbar-width: thin;' +
+    'scrollbar-color: rgba(71, 85, 105, 0.58) transparent;' +
     '}';
   document.documentElement.appendChild(scrollFixStyle);
 
@@ -1058,6 +1069,8 @@ function registerIpc() {
 function setupAutoUpdater() {
   autoUpdater.autoDownload = true;
   autoUpdater.autoInstallOnAppQuit = true;
+  autoUpdater.allowPrerelease = false;
+  autoUpdater.allowDowngrade = false;
 
   autoUpdater.on('checking-for-update', () => {
     sendToRenderer(CHANNELS.UPDATE_STATUS, {
@@ -1116,7 +1129,9 @@ function setupAutoUpdater() {
     return;
   }
 
-  autoUpdater.checkForUpdates().catch(() => {});
+  setTimeout(() => {
+    autoUpdater.checkForUpdates().catch(() => {});
+  }, 3500);
 
   autoUpdateTimer = setInterval(() => {
     autoUpdater.checkForUpdates().catch(() => {});
