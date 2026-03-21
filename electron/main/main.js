@@ -803,7 +803,6 @@ function installElectronUpdateUiBridge(windowRef) {
   let installNowToastEl = null;
   let statusToastEl = null;
   let statusToastCloseTimer = null;
-  let anchoredUserConfigBtnEl = null;
 
   const normalize = (value) =>
     String(value || '')
@@ -1079,65 +1078,6 @@ function installElectronUpdateUiBridge(windowRef) {
     document.body.appendChild(badge);
   };
 
-  const ensureAnchoredUserConfigButton = () => {
-    const allButtons = Array.from(document.querySelectorAll('button, [role="button"], a'));
-    const backBtn = allButtons.find((el) => {
-      const txt = normalize(el.textContent);
-      return txt.includes('voltar para dashboard');
-    });
-
-    if (!backBtn) {
-      if (anchoredUserConfigBtnEl) {
-        anchoredUserConfigBtnEl.remove();
-        anchoredUserConfigBtnEl = null;
-      }
-      return null;
-    }
-
-    if (!anchoredUserConfigBtnEl || !document.contains(anchoredUserConfigBtnEl)) {
-      anchoredUserConfigBtnEl = document.createElement('button');
-      anchoredUserConfigBtnEl.type = 'button';
-      anchoredUserConfigBtnEl.dataset.desktopUserconfigAnchoredBtn = '1';
-      anchoredUserConfigBtnEl.style.position = 'fixed';
-      anchoredUserConfigBtnEl.style.zIndex = '2147483646';
-      anchoredUserConfigBtnEl.style.display = 'inline-flex';
-      anchoredUserConfigBtnEl.style.alignItems = 'center';
-      anchoredUserConfigBtnEl.style.gap = '8px';
-      anchoredUserConfigBtnEl.style.padding = '9px 12px';
-      anchoredUserConfigBtnEl.style.border = '1px solid rgba(30, 64, 175, 0.22)';
-      anchoredUserConfigBtnEl.style.borderRadius = '12px';
-      anchoredUserConfigBtnEl.style.background = '#2563eb';
-      anchoredUserConfigBtnEl.style.color = '#fff';
-      anchoredUserConfigBtnEl.style.font = '700 12px/1 "Segoe UI", sans-serif';
-      anchoredUserConfigBtnEl.style.cursor = 'pointer';
-      anchoredUserConfigBtnEl.style.boxShadow = '0 8px 18px rgba(37, 99, 235, 0.24)';
-      anchoredUserConfigBtnEl.innerHTML = '<span class="desktop-update-dot" style="display:inline-block;width:8px;height:8px;border-radius:999px;background:#bfdbfe"></span><span>Atualizações</span>';
-      anchoredUserConfigBtnEl.addEventListener('click', (event) => {
-        event.preventDefault();
-        event.stopPropagation();
-        onUpdateButtonClick();
-      }, true);
-      document.body.appendChild(anchoredUserConfigBtnEl);
-    }
-
-    const rect = backBtn.getBoundingClientRect();
-    const btnWidth = Math.max(132, anchoredUserConfigBtnEl.offsetWidth || 132);
-    const left = Math.max(16, Math.round(rect.left - btnWidth - 12));
-    const top = Math.max(12, Math.round(rect.top + ((rect.height - 36) / 2)));
-    anchoredUserConfigBtnEl.style.left = left + 'px';
-    anchoredUserConfigBtnEl.style.top = top + 'px';
-
-    applyUpdateStateVisual(anchoredUserConfigBtnEl, lastUpdateState);
-    anchoredUserConfigBtnEl.setAttribute('title', lastUpdateMessage || 'Verificar atualizações');
-    const label = anchoredUserConfigBtnEl.querySelector('span:last-child');
-    if (label) {
-      label.textContent = lastUpdateState === 'downloaded'
-        ? 'Instalar atualização'
-        : 'Atualizações';
-    }
-    return anchoredUserConfigBtnEl;
-  };
-
   const patchPwaButton = () => {
     const candidates = Array.from(document.querySelectorAll('button, [role="button"], a'));
     const target = candidates.find((el) => {
@@ -1302,8 +1242,6 @@ function installElectronUpdateUiBridge(windowRef) {
           : 'Verificar atualizações';
       }
     }
-    ensureAnchoredUserConfigButton();
-
     // Toasts claros no topo para status de atualização.
     if (!window.__desktopUpdateToastState) {
       window.__desktopUpdateToastState = { lastState: '' };
@@ -1350,7 +1288,6 @@ function installElectronUpdateUiBridge(windowRef) {
   const tick = () => {
     ensureUpdateListener();
     retryPatch();
-    ensureAnchoredUserConfigButton();
     ensureVersionBadge().catch(() => {});
   };
 
