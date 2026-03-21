@@ -28,8 +28,54 @@ if (process.platform === 'win32') {
 }
 
 const DEFAULT_CONFIG = {
-  theme: 'system'
+  theme: 'system',
+  desktopPrefs: {
+    windowWidth: 1280,
+    windowHeight: 820,
+    zoomPercent: 93,
+    startMaximized: false,
+    alwaysOnTop: false
+  }
 };
+
+function toNumber(value, fallback) {
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : fallback;
+}
+
+function normalizeDesktopPrefs(rawPrefs) {
+  const source = rawPrefs && typeof rawPrefs === 'object' ? rawPrefs : {};
+  const windowWidth = Math.min(3840, Math.max(980, Math.round(toNumber(source.windowWidth, DEFAULT_CONFIG.desktopPrefs.windowWidth))));
+  const windowHeight = Math.min(2160, Math.max(640, Math.round(toNumber(source.windowHeight, DEFAULT_CONFIG.desktopPrefs.windowHeight))));
+  const zoomPercent = Math.min(200, Math.max(70, Math.round(toNumber(source.zoomPercent, DEFAULT_CONFIG.desktopPrefs.zoomPercent))));
+  return {
+    windowWidth,
+    windowHeight,
+    zoomPercent,
+    startMaximized: Boolean(source.startMaximized),
+    alwaysOnTop: Boolean(source.alwaysOnTop)
+  };
+}
+
+function getDesktopPrefs(config) {
+  return normalizeDesktopPrefs(config?.desktopPrefs);
+}
+
+function applyDesktopPrefsToWindow(windowRef, prefs) {
+  if (!windowRef || windowRef.isDestroyed()) return;
+  const normalized = normalizeDesktopPrefs(prefs);
+  const zoomFactor = normalized.zoomPercent / 100;
+
+  windowRef.setAlwaysOnTop(normalized.alwaysOnTop, 'normal');
+  windowRef.webContents.setZoomFactor(zoomFactor);
+
+  if (normalized.startMaximized) {
+    if (!windowRef.isMaximized()) windowRef.maximize();
+  } else {
+    if (windowRef.isMaximized()) windowRef.unmaximize();
+    windowRef.setSize(normalized.windowWidth, normalized.windowHeight);
+  }
+}
 
 function getConfigPath() {
   return path.join(app.getPath('userData'), 'config.json');
@@ -1538,9 +1584,10 @@ async function createWindow() {
   const isMac = process.platform === 'darwin';
   const isProduction = app.isPackaged;
   let rendererEntryForNav = '';
+  const desktopPrefs = getDesktopPrefs(readConfig());
   mainWindow = new BrowserWindow({
-    width: 1280,
-    height: 820,
+    width: desktopPrefs.windowWidth,
+    height: desktopPrefs.windowHeight,
     minWidth: 980,
     minHeight: 640,
     show: false,
@@ -1560,7 +1607,20 @@ async function createWindow() {
     }
   });
 
+  if (desktopPrefs.alwaysOnTop) {
+    mainWindow.setAlwaysOnTop(true, 'normal');
+  }
+  mainWindow.webContents.setZoomFactor(desktopPrefs.zoomPercent / 100);
+  mainWindow.webContents.on('did-finish-load', () => {
+    if (!mainWindow || mainWindow.isDestroyed()) return;
+    const freshPrefs = getDesktopPrefs(readConfig());
+    mainWindow.webContents.setZoomFactor(freshPrefs.zoomPercent / 100);
+  });
+
   mainWindow.once('ready-to-show', () => {
+    if (desktopPrefs.startMaximized) {
+      mainWindow.maximize();
+    }
     mainWindow.show();
   });
 
@@ -1718,6 +1778,9 @@ function registerIpc() {
     const current = readConfig();
     const next = { ...current, [payload.key]: payload.value };
     const saved = writeConfig(next);
+    if (payload.key === 'desktopPrefs' && mainWindow && !mainWindow.isDestroyed()) {
+      applyDesktopPrefsToWindow(mainWindow, saved.desktopPrefs);
+    }
     return { ok: true, config: saved };
   });
 }
