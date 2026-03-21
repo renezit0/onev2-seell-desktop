@@ -1064,7 +1064,7 @@ function installElectronUpdateUiBridge(windowRef) {
     badge.id = 'desktop-electron-version';
     badge.textContent = 'v.' + version;
     badge.style.position = 'fixed';
-    badge.style.right = '96px';
+    badge.style.left = '18px';
     badge.style.bottom = '10px';
     badge.style.zIndex = '2147483647';
     badge.style.pointerEvents = 'none';
@@ -1167,13 +1167,6 @@ function installElectronUpdateUiBridge(windowRef) {
     const existing = host.querySelector('[data-desktop-electron-update-btn="1"]');
     if (existing) return existing;
 
-    const wrapper = document.createElement('div');
-    wrapper.style.display = 'flex';
-    wrapper.style.justifyContent = 'flex-end';
-    wrapper.style.marginTop = '0';
-    wrapper.style.marginLeft = '10px';
-    wrapper.style.width = 'auto';
-
     const button = document.createElement('button');
     button.type = 'button';
     button.dataset.desktopElectronUpdateBtn = '1';
@@ -1197,9 +1190,7 @@ function installElectronUpdateUiBridge(windowRef) {
 
     applyUpdateStateVisual(button, lastUpdateState);
     button.setAttribute('title', lastUpdateMessage || 'Verificar atualizações');
-
-    wrapper.appendChild(button);
-    host.appendChild(wrapper);
+    host.appendChild(button);
     return button;
   };
 
